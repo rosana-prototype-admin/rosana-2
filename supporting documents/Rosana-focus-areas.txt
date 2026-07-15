@@ -1,0 +1,94 @@
+This is a hierarchy of focus areas that a user can select when creating a Project in Rosana.
+
+This hierarchy appears in the Project editor page as a series of dropdowns. The first dropdown lists the main and second categories of focus area (e.g., Road User - Vulnerable Road Users). A second dropdown populates on selection of the first dropdown, and it lists all subcategories of the selected supercategory.
+
+Focus Areas
+├── Road Users
+│   ├── Vulnerable Road Users
+│   │   ├── Pedestrians
+│   │   ├── Bicyclists
+│   │   ├── Children
+│   │   ├── Elders & People with Disabilities
+│   │   └── Underserved Communities
+│   ├── Powersport Vehicle Users
+│   │   ├── Micromobility (eBikes, eScooters, etc.)
+│   │   ├── Motorcycles
+│   │   ├── ATVs & UTVs
+│   │   └── Dirt Bikes, Dune Buggies & Snowmobiles
+│   ├── Motor Vehicle Occupant Protection
+│   │   ├── Child Passenger Restraints
+│   │   └── Seatbelts
+│   ├── Taxis and Passenger Vehicle Fleets
+│   │   ├── Taxis and Ride Hailing Services
+│   │   ├── Government Fleets
+│   │   └── Private Fleets
+│   ├── Heavy Trucks & Buses
+│   │   ├── Local Freight and Parcel Delivery
+│   │   ├── Intercity Trucking
+│   │   ├── Hazardous Material Transport
+│   │   ├── School Bus
+│   │   ├── Urban Bus
+│   │   └── Intercity Bus (Coach)
+│   ├── Driver Age
+│   │   ├── Young Drivers (≤19 years)
+│   │   └── Elder Drivers (≥65 years)
+│   ├── Impaired Driving
+│   │   ├── Alcohol
+│   │   ├── Cannabis (Marijuana)
+│   │   └── Other Drugs
+│   ├── Other Driving Conditions & Behaviors
+│   │   ├── Aggressive, Reckless & Stunt Driving
+│   │   ├── Distracted Driving
+│   │   ├── Drowsy/Fatigued Driving
+│   │   └── Work-Related Driving
+│   ├── Legislation & Enforcement
+│   │   ├── Automated Enforcement
+│   │   ├── Manual Enforcement
+│   │   ├── Fines & Penalties
+│   │   ├── Traffic Regulations
+│   │   └── General-Purpose Policy Instruments
+│   └── Driver Education & Public Outreach
+│       ├── Driver Education
+│       ├── Public Information Campaigns
+│       └── Safety Culture Change
+├── Infrastructure & Speed Management
+│   ├── Intersections, Junctions & Crossings
+│   │   ├── Animal Crossings
+│   │   ├── Bikeway & Multi-Use Path Crossings
+│   │   ├── Pedestrian Crossings
+│   │   ├── Intersertions - Rural
+│   │   ├── Intersertions - Urban
+│   │   ├── Ramp Terminals
+│   │   └── Railway Crossings
+│   ├── Roadway Segments by Facility Type
+│   │   ├── Freeway/Motorway/Tollway Mainlines
+│   │   ├── Other Multi-Lane Divided High-Speed Mainlines
+│   │   ├── Ramps
+│   │   ├── Primary Rural Highways
+│   │   ├── Secondary Rural Highways
+│   │   ├── Urban/Suburban Arterials
+│   │   ├── Major Collectors
+│   │   ├── Minor Collectors
+│   │   ├── Local/Neighborhood Streets
+│   │   └── Alleys and Driveways
+│   ├── Special Driving Zones
+│   │   ├── School Zones
+│   │   └── Work Zones
+│   ├── Weather and Road Maintenance
+│   │   ├── Winter Driving
+│   │   └── Other Adverse Road Conditions
+│   ├── Speed Management
+│   └── Roadway Interventions by Manner of Collision
+│       ├── Animal
+│       ├── Failure to Yield
+│       ├── Head-On
+│       ├── Lane/Roadway Departure
+│       ├── Rear End
+│       └── Run Off Road (Single Vehicle)
+├── Vehicle Features & Conditions
+│   ├── Vehicle Design & Equipment
+│   │   ├── Advanced Driver Assistance Systems
+│   │   └── Connected/Autonomous Vehicles
+│   └── Vehicle Inspection & Maintenance
+└── Post-Crash Medical Care
+    └── Post-Crash Medical Care

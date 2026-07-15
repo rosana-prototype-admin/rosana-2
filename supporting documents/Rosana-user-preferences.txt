@@ -1,0 +1,36 @@
+This tree shows different fields of user preferences in the 1st column (e.g., Language) followed by options for that field (e.g., English (US)).
+
+User Preferences
+├── Language
+│   └── English (Australia) [EN-AU]
+│   └── English (Canada) [EN-CA]
+│   └── English (UK) [EN-GB]
+│   └── English (US) [EN-US]
+│   └── Français (Canada) [FR-CA]
+│   └── Español (Latinoamericano) [ES-419]
+├── Currency
+│   └── Australian Dollar [AUD | $]
+│   └── British Pound [GBP | £]
+│   └── Canadian Dollar [CAD | $]
+│   └── Euro [EUR | €]
+│   └── México Peso [MXN | $]
+│   └── US Dollar [USD | $]
+├── Length
+│   └── metres [m | 1.0]
+│   └── feet [ft | 3.28084]
+├── Distance
+│   └── kilometres [km | 1.0]
+│   └── miles [mi | 0.621371]
+├── Speed
+│   └── kilometres per hour [km/h | 1.0]
+│   └── miles per hour [mph | 0.621371]
+├── Area-Small
+│   └── square metres [m² | 1.0]
+│   └── square feet [sq ft | 10.7639]
+├── Area-Large
+│   └── hectares [ha | 1.0]
+│   └── acres [ac | 2.47105]
+├── Volume
+│   └── litres [L | 1.0]
+│   └── gallons (US) [gal (US) | 0.264172]
+│   └── gallons (Imperial) [gal (Imp) | 0.219969]

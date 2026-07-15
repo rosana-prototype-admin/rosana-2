@@ -1,0 +1,52 @@
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 16px 32px;
+  border-bottom: 1px solid var(--border);
+}
+
+.app-header-brand {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--text-h);
+  text-decoration: none;
+}
+
+.app-header-nav {
+  display: flex;
+  gap: 16px;
+  flex: 1;
+}
+
+.app-header-nav a {
+  color: var(--text);
+  text-decoration: none;
+  font-weight: var(--font-medium);
+}
+
+.app-header-nav a:hover {
+  color: var(--text-h);
+}
+
+.app-header-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text);
+}
+
+.app-header-logout {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.app-header-logout:hover {
+  border-color: var(--accent-border);
+}

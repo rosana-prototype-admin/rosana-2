@@ -1,0 +1,40 @@
+.data-table {
+  background: var(--bg);
+}
+
+.data-table th {
+  cursor: default;
+  user-select: none;
+  color: var(--text);
+}
+
+.data-table th.data-table-sortable {
+  cursor: pointer;
+}
+
+.data-table th.data-table-sortable:hover {
+  color: var(--text-h);
+}
+
+.data-table-sort-arrow {
+  color: var(--accent);
+}
+
+.data-table tbody tr {
+  cursor: pointer;
+}
+
+.data-table tbody tr:hover {
+  background: var(--accent-bg);
+}
+
+.data-table tbody tr.data-table-row-selected {
+  background: var(--accent-bg);
+  outline: 2px solid var(--accent-border);
+  outline-offset: -2px;
+}
+
+.data-table-empty {
+  padding: 24px 0;
+  color: var(--text);
+}

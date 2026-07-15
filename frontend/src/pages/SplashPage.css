@@ -1,0 +1,66 @@
+.splash-page {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+}
+
+.splash-card {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  text-align: left;
+}
+
+.splash-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.splash-eyebrow {
+  margin: 0 0 4px;
+  color: var(--text);
+}
+
+.splash-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px 24px;
+  margin: 0;
+}
+
+.splash-details dt {
+  color: var(--text);
+}
+
+.splash-details dd {
+  margin: 4px 0 0;
+  color: var(--text-h);
+  font-size: var(--text-base);
+}
+
+.splash-primary {
+  align-self: flex-start;
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  padding: 10px 18px;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.splash-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

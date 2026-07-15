@@ -1,0 +1,124 @@
+.editor-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 32px;
+  text-align: left;
+}
+
+.editor-back {
+  align-self: flex-start;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  padding: 0;
+}
+
+.editor-back:hover {
+  color: var(--text-h);
+}
+
+.editor-card {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.editor-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.editor-readonly-badge {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--text-h);
+}
+
+.editor-field input,
+.editor-field textarea,
+.editor-field select {
+  font-size: var(--text-base);
+  font-weight: var(--font-regular);
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  font-family: inherit;
+}
+
+.editor-field input:disabled,
+.editor-field textarea:disabled,
+.editor-field select:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.editor-field input:focus,
+.editor-field textarea:focus,
+.editor-field select:focus {
+  outline: none;
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.editor-field textarea {
+  resize: vertical;
+}
+
+.editor-meta {
+  display: flex;
+  gap: 32px;
+  margin: 0;
+}
+
+.editor-meta dt {
+  color: var(--text);
+}
+
+.editor-meta dd {
+  margin: 4px 0 0;
+  color: var(--text-h);
+}
+
+.editor-save {
+  align-self: flex-start;
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  padding: 10px 18px;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.editor-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

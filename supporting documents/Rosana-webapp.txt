@@ -1,0 +1,398 @@
+# React–Django Traffic Safety Decision Support Application Specification
+
+## Role
+
+You are a senior full-stack software architect and software engineer. Your task is to design a production-quality web application using the following technology stack.
+
+### Frontend
+
+* React
+* Functional Components
+* React Hooks
+* Axios
+* React Router
+
+### Backend
+
+* Python
+* Django
+* Django REST Framework
+
+### Database
+
+* PostgreSQL hosted on Google Cloud SQL
+
+### Deployment
+
+* Gunicorn
+* Nginx
+* React production build served by Django
+
+The project should emphasize maintainability, modularity, readability, scalability, and security.
+
+---
+
+# General Development Rules
+
+Follow these guidelines throughout the project.
+
+## Code Quality
+
+* Follow PEP 8 for Python.
+* Follow modern React best practices.
+* Use functional components exclusively.
+* Use React Hooks instead of class components.
+* Use async/await for asynchronous operations.
+* Write modular, reusable code.
+* Avoid duplicated logic.
+* Comment non-obvious code.
+* Produce production-ready code.
+* Do not generate placeholder implementations unless explicitly requested.
+
+## Backend
+
+* Use Django REST Framework ModelSerializers whenever appropriate.
+* Validate all user input.
+* Return meaningful HTTP status codes.
+* Optimize database queries.
+* Use transactions where appropriate.
+* Enforce permissions on the backend.
+* Never trust frontend validation alone.
+
+## Frontend
+
+* Communicate exclusively through REST APIs.
+* Never access the database directly.
+* Display useful loading indicators.
+* Display meaningful error messages.
+* Refresh data after successful create, edit, clone, or delete operations.
+* Avoid unnecessary re-renders.
+* Reuse components whenever practical.
+
+## Modifying Existing Code
+
+When modifying existing code:
+
+* Preserve backward compatibility whenever possible.
+* Explain architectural decisions.
+* Identify every affected file.
+* Explain why each file requires modification.
+* Do not rewrite unrelated files.
+* Assume the remainder of the application already exists.
+
+If information required to complete a task is missing, ask clarifying questions before generating code.
+
+---
+
+# Purpose of the Application
+
+This application is a decision-support tool for transportation professionals. A user creates a **Project** representing a real-world transportation safety or operational problem requiring analysis. Rather than identifying a single solution, users explore multiple competing strategies.
+
+Each strategy is represented by a **Course of Action (COA)**. A Project therefore contains one or more Courses of Action that represent alternative solutions to the same transportation problem. 
+
+Each Course of Action contains a collection of **Interventions**. An Intervention represents one individual engineering, operational, educational, enforcement, policy, or infrastructure action that contributes to the overall strategy.
+
+The application allows users to create, organize, compare, clone, edit, and analyze these alternative Courses of Action.
+
+---
+
+# Object Hierarchy
+
+Project
+└── CourseOfAction
+    └── Intervention
+
+Every Intervention belongs to exactly one CourseOfAction.
+
+Every CourseOfAction belongs to exactly one Project.
+
+Projects are the root object of the application.
+
+---
+
+# Data Model
+
+## User
+
+A User contains:
+* username
+* password
+* email
+* secondary email
+* first name
+* last name
+* company
+* subscription type (None, Basic, Premium, Admin)
+* jcodes: a list of jurisdiction codes the user has access to for data analysis
+
+## Jcode
+
+A Jcode is a class that uniquely identifies a geographic region. A jcode contains:
+* id
+* state
+* county
+* placeNameShort
+* placeNameLong
+* censusPlaceName
+
+## FocusArea
+
+A Focus Area is the topic that a project pertains to. A list of Focus Areas will be included in a separate document.
+
+## Project
+
+A Project represents a transportation problem under study. 
+
+A Project contains:
+* id: unique identifier that is automatically assigned on Project creation and is not editable
+* name: custom string created by User
+* description: custom string created by User
+* focusArea: selected by User from among a list of FocusAreas
+* list of CoursesOfAction
+* owner: by default this is the User who created the project
+* editors: list of Users with read/write permission
+* guests: list of Users with read-only permission
+
+Relationships:
+
+* One Project contains one or more CoursesOfAction.
+
+---
+
+## CourseOfAction
+
+A CourseOfAction represents one complete strategy for addressing the parent Project.
+
+A CourseOfAction contains:
+* id: unique read-only identifier automatically assigned on creation
+* parent Project
+* name: custom string created by User
+* description: custom string created by User
+* list of Interventions
+* Projection
+
+Relationships:
+
+* Belongs to exactly one Project.
+* Contains one or more Interventions.
+* Contains one Projection
+
+---
+
+## Intervention
+
+An Intervention represents one individual action within a CourseOfAction.
+
+An Intervention contains:
+* id: a unique number assigned at the creation of an Intervention, not modifiable
+* parent CourseOfAction
+* interventionType: selected by the User from among a list of available InterventionTypes
+	** The available intervention types are constrained by the Project's focus area
+* parameters: additional variables to be included depending on the interventionType selected by the User
+
+Relationships:
+
+* An Intervention belongs to exactly one CourseOfAction.
+
+---
+
+# User Workflow
+
+## Login
+
+After authentication the user enters the application dashboard.
+Details about the user's account are listed.
+The primary navigation point is the **Projects** page.
+
+---
+
+## Projects Listing page
+
+The Projects page displays every Project that the user owns or has permission to access.
+Projects are displayed in a selectable table.
+Selecting a row highlights that Project.
+
+The table includes these fields:
+* Project title
+* Project description
+* Date last modified
+* Date created
+
+Available actions:
+* New Project
+* View (enabled if a Project is selected)
+* Delete (enabled if a Project is selected)
+* Clone (enabled if a Project is selected)
+
+### New Project
+
+Creates a new Project populated with default values.
+Immediately opens the Project Editor.
+
+### View
+
+Opens the selected Project Editor and populates field with information about that Project.
+
+### Delete
+
+Displays a confirmation dialog.
+Deletes the selected Project if confirmed.
+
+### Clone
+
+Creates an exact duplicate of the selected Project.
+The clone receives a new unique identifier.
+Unless otherwise specified, cloned Projects should also contain cloned Courses of Action and cloned Interventions.
+
+---
+
+## Project Editor page
+
+Displays all editable Project properties.
+Displays a table listing every CourseOfAction belonging to the Project.
+
+Available actions:
+* New
+* Edit (enabled if a CourseOfAction is selected)
+* Delete (enabled if a CourseOfAction is selected)
+* Clone (enabled if a CourseOfAction is selected)
+
+---
+
+### New CourseOfAction
+
+Creates a new CourseOfAction populated with default values.
+Associates it with the current Project.
+Immediately opens the CourseOfAction Editor page.
+
+---
+
+### Edit CourseOfAction
+
+Opens the CourseOfAction Editor page.
+Populates fields with information about the CourseOfAction
+
+---
+
+### Delete CourseOfAction
+
+Displays a confirmation dialog.
+Deletes the selected CourseOfAction if confirmed.
+
+---
+
+### Clone CourseOfAction
+
+Creates an exact duplicate of the selected CourseOfAction.
+Assigns a new unique identifier.
+Unless otherwise specified, cloned Courses of Action should also contain cloned Interventions.
+
+---
+
+## CourseOfAction Editor page
+
+Displays all properties of a selected CourseOfAction.
+Displays a table listing every Intervention belonging to the CourseOfAction.
+
+Available actions:
+* New
+* Edit (enabled if an Intervention is selected)
+* Delete (enabled if an Intervention is selected)
+* Clone (enabled if an Intervention is selected)
+* Run Analysis
+
+---
+
+### New Intervention
+
+Creates a new Intervention populated with default values.
+Associates it with the current CourseOfAction.
+Immediately opens the Intervention Editor.
+
+---
+
+### Edit Intervention
+
+Opens the Intervention Editor.
+
+---
+
+### Delete Intervention
+
+Displays a confirmation dialog.
+Deletes the selected Intervention if confirmed.
+
+---
+
+### Clone Intervention
+
+Creates an exact duplicate of the selected Intervention.
+Assigns a new unique identifier.
+
+---
+
+## Run Analysis
+
+Analyzes the results of the set of interventions.
+
+---
+
+## Intervention Editor
+
+Displays every property for the selected Intervention.
+The editor dynamically displays the parameter fields appropriate for the selected interventionType.
+Changing interventionType should automatically update the editable parameter fields while preserving compatible values whenever possible.
+
+---
+
+# User Interface Behavior
+
+The application should maintain consistent behavior throughout all pages.
+
+Tables should:
+* Support row selection.
+* Clearly highlight the selected row.
+* Support sorting.
+* Support filtering where appropriate.
+* Refresh automatically after data modifications.
+
+Buttons should:
+* Operate only on the currently selected row.
+* Be disabled when no row is selected.
+* Display confirmation dialogs before destructive actions.
+
+Editors should:
+* Validate input before submission.
+* Display validation errors returned by the backend.
+* Warn users before navigating away with unsaved changes.
+
+---
+
+# Application Rules
+
+The following rules should always be enforced.
+* Projects are the root object.
+* Every CourseOfAction belongs to one Project.
+* Every Intervention belongs to one CourseOfAction.
+* IDs are generated only by the backend.
+* The frontend never communicates directly with PostgreSQL.
+* All data access occurs through Django REST Framework APIs.
+* Backend permissions determine whether a user may read or modify an object.
+* The frontend should disable or hide controls for actions the current user cannot perform.
+* Cloning creates independent copies with new primary keys while preserving the original hierarchy.
+* Parent-child relationships are maintained automatically.
+* The user should never need to manually assign parent IDs.
+* All create, update, delete, and clone operations should leave the frontend synchronized with the backend.
+
+---
+
+# Expectations When Generating Code
+
+Before writing code for a new feature:
+1. Explain the overall approach.
+2. Identify every file that will be created or modified.
+3. Explain why each file requires changes.
+4. Generate one file at a time unless instructed otherwise.
+5. Ensure all generated code integrates with the existing application.
+6. Preserve the existing architecture and coding conventions.
+7. After implementation, review the generated code for correctness, maintainability, security, and performance.

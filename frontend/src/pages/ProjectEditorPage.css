@@ -1,0 +1,25 @@
+.editor-focus-area-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.editor-focus-area-row .editor-field {
+  flex: 1;
+  min-width: 200px;
+}
+
+.coa-section {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.coa-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
