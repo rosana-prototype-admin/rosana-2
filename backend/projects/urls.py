@@ -4,20 +4,27 @@ from rest_framework.routers import DefaultRouter
 from . import views
 
 router = DefaultRouter()
-router.register('projects', views.ProjectViewSet, basename='project')
-router.register('courses-of-action', views.CourseOfActionViewSet, basename='courseofaction')
+router.register('opportunities', views.OpportunityViewSet, basename='opportunity')
+router.register('strategies', views.StrategyViewSet, basename='strategy')
 router.register('interventions', views.InterventionViewSet, basename='intervention')
+router.register('projects', views.ProjectViewSet, basename='project')
+router.register('organizations', views.OrganizationViewSet, basename='organization')
 
 nested_urlpatterns = [
     path(
-        'projects/<int:project_pk>/courses-of-action/',
-        views.CourseOfActionViewSet.as_view({'get': 'list', 'post': 'create'}),
-        name='project-courseofaction-list',
+        'opportunities/<int:opportunity_pk>/strategies/',
+        views.StrategyViewSet.as_view({'get': 'list', 'post': 'create'}),
+        name='opportunity-strategy-list',
     ),
     path(
-        'courses-of-action/<int:coa_pk>/interventions/',
+        'strategies/<int:strategy_pk>/interventions/',
         views.InterventionViewSet.as_view({'get': 'list', 'post': 'create'}),
-        name='courseofaction-intervention-list',
+        name='strategy-intervention-list',
+    ),
+    path(
+        'strategies/<int:strategy_pk>/projects/',
+        views.ProjectViewSet.as_view({'get': 'list', 'post': 'create'}),
+        name='strategy-project-list',
     ),
 ]
 

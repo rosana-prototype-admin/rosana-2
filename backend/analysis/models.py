@@ -2,15 +2,15 @@ from django.db import models
 
 
 class Projection(models.Model):
-    """The (currently stubbed) analysis result for a CourseOfAction."""
+    """The (currently stubbed) analysis result for a Strategy."""
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'Pending'
         COMPLETE = 'complete', 'Complete'
         FAILED = 'failed', 'Failed'
 
-    course_of_action = models.OneToOneField(
-        'projects.CourseOfAction',
+    strategy = models.OneToOneField(
+        'projects.Strategy',
         on_delete=models.CASCADE,
         related_name='projection',
     )
@@ -25,4 +25,4 @@ class Projection(models.Model):
     modified_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f'Projection for {self.course_of_action_id} ({self.status})'
+        return f'Projection for {self.strategy_id} ({self.status})'

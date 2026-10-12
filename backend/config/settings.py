@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'focusareas',
     'projects',
     'analysis',
+    'discussions',
 ]
 
 MIDDLEWARE = [

@@ -18,14 +18,14 @@ class FocusAreaViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=False, url_path='l1-l2')
     def l1_l2(self, request):
-        """Combined "L1 - L2" options for the first Project-editor dropdown."""
+        """Combined "L1 - L2" options for the first Opportunity-editor dropdown."""
         nodes = self.get_queryset().filter(level=2)
         serializer = FocusAreaL1L2Serializer(nodes, many=True)
         return Response(serializer.data)
 
     @action(detail=True)
     def children(self, request, pk=None):
-        """Direct children of the selected node, for the second Project-editor dropdown."""
+        """Direct children of the selected node, for the second Opportunity-editor dropdown."""
         node = self.get_object()
         children = self.get_queryset().filter(parent=node)
         serializer = FocusAreaSerializer(children, many=True)

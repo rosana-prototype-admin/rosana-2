@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import CourseOfAction, Intervention, Project
+from .models import Intervention, Opportunity, Organization, Project, Strategy
 
 
 class InterventionInline(admin.TabularInline):
@@ -8,29 +8,48 @@ class InterventionInline(admin.TabularInline):
     extra = 0
 
 
-class CourseOfActionInline(admin.TabularInline):
-    model = CourseOfAction
+class StrategyInline(admin.TabularInline):
+    model = Strategy
     extra = 0
 
 
-@admin.register(Project)
-class ProjectAdmin(admin.ModelAdmin):
+class ProjectInline(admin.TabularInline):
+    model = Project
+    extra = 0
+
+
+@admin.register(Opportunity)
+class OpportunityAdmin(admin.ModelAdmin):
     list_display = ('name', 'focus_area', 'owner', 'created_at', 'modified_at')
     list_filter = ('focus_area',)
     search_fields = ('name', 'description')
     filter_horizontal = ('editors', 'guests')
-    inlines = [CourseOfActionInline]
+    inlines = [StrategyInline]
 
 
-@admin.register(CourseOfAction)
-class CourseOfActionAdmin(admin.ModelAdmin):
-    list_display = ('name', 'project', 'created_at', 'modified_at')
-    list_filter = ('project',)
+@admin.register(Strategy)
+class StrategyAdmin(admin.ModelAdmin):
+    list_display = ('name', 'opportunity', 'created_at', 'modified_at')
+    list_filter = ('opportunity',)
     search_fields = ('name', 'description')
-    inlines = [InterventionInline]
+    inlines = [InterventionInline, ProjectInline]
 
 
 @admin.register(Intervention)
 class InterventionAdmin(admin.ModelAdmin):
-    list_display = ('__str__', 'course_of_action', 'intervention_type')
+    list_display = ('__str__', 'strategy', 'intervention_type', 'project')
     list_filter = ('intervention_type',)
+
+
+@admin.register(Project)
+class ProjectAdmin(admin.ModelAdmin):
+    list_display = ('name', 'strategy', 'created_at', 'modified_at')
+    list_filter = ('strategy',)
+    search_fields = ('name', 'description')
+    filter_horizontal = ('organizations',)
+
+
+@admin.register(Organization)
+class OrganizationAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name',)

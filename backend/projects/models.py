@@ -3,7 +3,7 @@ from django.db import models
 from django.db.models import Q
 
 
-class ProjectQuerySet(models.QuerySet):
+class OpportunityQuerySet(models.QuerySet):
     def visible_to(self, user):
         return self.filter(
             Q(owner=user) | Q(editors=user) | Q(guests=user)
@@ -13,7 +13,7 @@ class ProjectQuerySet(models.QuerySet):
         return self.filter(Q(owner=user) | Q(editors=user)).distinct()
 
 
-class Project(models.Model):
+class Opportunity(models.Model):
     """The root object: a transportation problem under study."""
 
     name = models.CharField(max_length=255)
@@ -21,27 +21,27 @@ class Project(models.Model):
     focus_area = models.ForeignKey(
         'focusareas.FocusArea',
         on_delete=models.PROTECT,
-        related_name='projects',
+        related_name='opportunities',
     )
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
-        related_name='owned_projects',
+        related_name='owned_opportunities',
     )
     editors = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
-        related_name='editable_projects',
+        related_name='editable_opportunities',
         blank=True,
     )
     guests = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
-        related_name='guest_projects',
+        related_name='guest_opportunities',
         blank=True,
     )
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
 
-    objects = ProjectQuerySet.as_manager()
+    objects = OpportunityQuerySet.as_manager()
 
     class Meta:
         ordering = ['-modified_at']
@@ -49,17 +49,17 @@ class Project(models.Model):
     def __str__(self):
         return self.name
 
-    def get_project(self):
+    def get_opportunity(self):
         return self
 
 
-class CourseOfAction(models.Model):
-    """One complete strategy for addressing the parent Project."""
+class Strategy(models.Model):
+    """One complete strategy for addressing the parent Opportunity."""
 
-    project = models.ForeignKey(
-        Project,
+    opportunity = models.ForeignKey(
+        Opportunity,
         on_delete=models.CASCADE,
-        related_name='courses_of_action',
+        related_name='strategies',
     )
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
@@ -72,15 +72,55 @@ class CourseOfAction(models.Model):
     def __str__(self):
         return self.name
 
-    def get_project(self):
-        return self.project
+    def get_opportunity(self):
+        return self.opportunity
+
+
+class Organization(models.Model):
+    """A reusable, freeform catalog entry for organizations affiliated with Projects."""
+
+    name = models.CharField(max_length=255, unique=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class Project(models.Model):
+    """An organizational attempt at a set of Interventions within a Strategy."""
+
+    strategy = models.ForeignKey(
+        Strategy,
+        on_delete=models.CASCADE,
+        related_name='projects',
+    )
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    organizations = models.ManyToManyField(
+        Organization,
+        related_name='projects',
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    modified_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return self.name
+
+    def get_opportunity(self):
+        return self.strategy.opportunity
 
 
 class Intervention(models.Model):
-    """One individual action within a CourseOfAction."""
+    """One individual action within a Strategy."""
 
-    course_of_action = models.ForeignKey(
-        CourseOfAction,
+    strategy = models.ForeignKey(
+        Strategy,
         on_delete=models.CASCADE,
         related_name='interventions',
     )
@@ -90,6 +130,14 @@ class Intervention(models.Model):
         related_name='interventions',
     )
     parameters = models.JSONField(default=dict, blank=True)
+    included_in_analysis = models.BooleanField(default=True)
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='interventions',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
 
@@ -97,7 +145,7 @@ class Intervention(models.Model):
         ordering = ['id']
 
     def __str__(self):
-        return f'{self.intervention_type} ({self.course_of_action_id})'
+        return f'{self.intervention_type} ({self.strategy_id})'
 
-    def get_project(self):
-        return self.course_of_action.project
+    def get_opportunity(self):
+        return self.strategy.opportunity

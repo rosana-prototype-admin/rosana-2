@@ -1,7 +1,7 @@
 from django.utils import timezone
 
 
-def run_stub_analysis(course_of_action):
+def run_stub_analysis(strategy):
     """
     Intentional stub: the real crash-reduction/cost-benefit analysis has not
     been designed yet. Returns a deterministic placeholder payload so the
@@ -11,6 +11,6 @@ def run_stub_analysis(course_of_action):
     return {
         'summary': 'Analysis not yet implemented.',
         'metrics': {},
-        'intervention_count': course_of_action.interventions.count(),
+        'intervention_count': strategy.interventions.filter(included_in_analysis=True).count(),
         'generated_at': timezone.now().isoformat(),
     }

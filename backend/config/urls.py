@@ -13,4 +13,5 @@ urlpatterns = [
     path('api/', include('geo.urls')),
     path('api/', include('focusareas.urls')),
     path('api/', include('projects.urls')),
+    path('api/', include('discussions.urls')),
 ]

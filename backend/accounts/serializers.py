@@ -48,3 +48,11 @@ class UserSerializer(serializers.ModelSerializer):
             'jcodes',
         ]
         read_only_fields = ['id', 'username', 'subscription_type', 'jcodes']
+
+
+class UserSearchResultSerializer(serializers.ModelSerializer):
+    """Minimal, non-sensitive fields for directory search results."""
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'first_name', 'last_name', 'email']

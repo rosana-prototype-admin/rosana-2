@@ -10,7 +10,7 @@ class FocusAreaSerializer(serializers.ModelSerializer):
 
 
 class FocusAreaL1L2Serializer(serializers.ModelSerializer):
-    """Level-2 nodes labeled with their level-1 parent, for the first Project-editor dropdown."""
+    """Level-2 nodes labeled with their level-1 parent, for the first Opportunity-editor dropdown."""
 
     label = serializers.SerializerMethodField()
 

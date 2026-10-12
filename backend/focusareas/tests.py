@@ -65,8 +65,12 @@ class InterventionTypeApiTests(APITestCase):
     def test_filter_by_focus_area(self):
         response = self.client.get(f'/api/intervention-types/?focus_area={self.vru.pk}')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['name'], 'Crossing Improvement')
+        # Not an exact-count check: seed-migration data (e.g. the placeholder
+        # Intervention Types linked to every FocusArea) legitimately persists
+        # across tests since migrations aren't rolled back like setUp() is.
+        names = [item['name'] for item in response.data]
+        self.assertIn('Crossing Improvement', names)
+        self.assertNotIn('Speed Camera', names)
 
     def test_inactive_types_are_excluded(self):
         response = self.client.get('/api/intervention-types/')
