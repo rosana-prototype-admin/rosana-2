@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import './LoginPage.css'
+import '../styles/authForm.css'
+import '../styles/formFeedback.css'
 
 export default function LoginPage() {
   const { login, isAuthenticated } = useAuth()
@@ -42,7 +43,7 @@ export default function LoginPage() {
         <p className="auth-subtitle">Sign in to continue</p>
 
         {error && (
-          <p className="auth-error" role="alert">
+          <p className="form-error" role="alert">
             {error}
           </p>
         )}
@@ -75,6 +76,10 @@ export default function LoginPage() {
         <button type="submit" className="auth-submit" disabled={isSubmitting}>
           {isSubmitting ? 'Signing in…' : 'Sign in'}
         </button>
+
+        <p className="auth-switch">
+          Don&rsquo;t have an account? <Link to="/register">Create one</Link>
+        </p>
       </form>
     </main>
   )

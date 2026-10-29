@@ -35,7 +35,9 @@ class FocusAreaViewSet(viewsets.ReadOnlyModelViewSet):
 class InterventionTypeViewSet(viewsets.ReadOnlyModelViewSet):
     """Read-only catalog of intervention types. Managed via the admin site."""
 
-    queryset = InterventionType.objects.prefetch_related('focus_areas').filter(is_active=True)
+    queryset = InterventionType.objects.select_related('cmf', 'cmf__metadata').prefetch_related(
+        'focus_areas', 'cmf__coefficients'
+    ).filter(is_active=True)
     serializer_class = InterventionTypeSerializer
 
     def get_queryset(self):

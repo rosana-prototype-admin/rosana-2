@@ -1,0 +1,13 @@
+.auth-card-wide {
+  max-width: 440px;
+}
+
+.auth-field-row {
+  display: flex;
+  gap: 16px;
+}
+
+.auth-field-row .auth-field {
+  flex: 1;
+  min-width: 0;
+}

@@ -1,0 +1,12 @@
+.custom-cmfs-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 32px;
+  text-align: left;
+}
+
+.custom-cmfs-page h1 {
+  margin: 0;
+}

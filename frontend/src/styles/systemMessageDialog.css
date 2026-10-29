@@ -1,0 +1,146 @@
+.system-message-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+}
+
+.system-message-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+}
+
+.system-message-header h3 {
+  margin: 0;
+  color: inherit;
+}
+
+.system-message-icon {
+  flex-shrink: 0;
+  font-size: var(--text-lg);
+  line-height: 1;
+}
+
+.system-message-icon-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid currentcolor;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+}
+
+.system-message-body {
+  padding: 20px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.system-message-body p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.system-message-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 20px 16px;
+}
+
+.system-message-close {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.system-message-close:hover {
+  border-color: var(--accent-border);
+}
+
+/* Information */
+.system-message-info .system-message-header {
+  background: #3b2352;
+  color: #ffffff;
+}
+.system-message-info .system-message-body {
+  background: #f7f7f7;
+  color: #000000;
+}
+
+/* User Input */
+.system-message-user-input .system-message-header {
+  background: #1b4332;
+  color: #ffffff;
+}
+.system-message-user-input .system-message-body {
+  background: #e6f4ea;
+  color: #000000;
+}
+
+/* User Input - Alternate procedure */
+.system-message-user-input-alt .system-message-header {
+  background: #7a1f1f;
+  color: #ffffff;
+}
+.system-message-user-input-alt .system-message-body {
+  background: #fdecec;
+  color: #000000;
+}
+
+/* Computed output */
+.system-message-output .system-message-header {
+  background: #3f3f46;
+  color: #ffffff;
+}
+.system-message-output .system-message-body {
+  background: #eaeaea;
+  color: #000000;
+}
+
+/* Caution */
+.system-message-caution .system-message-header {
+  background: #f59e0b;
+  color: #000000;
+}
+.system-message-caution .system-message-body {
+  background: #fff1dc;
+  color: #000000;
+}
+
+/* Warning */
+.system-message-warning .system-message-header {
+  background: #e4572e;
+  color: #ffffff;
+}
+.system-message-warning .system-message-body {
+  background: #fbe0d3;
+  color: #000000;
+}
+
+/* Error -- header is a strong red for severity; body is lightened from the
+   spec's "dark red" so black body text stays legible (see plan notes). */
+.system-message-error .system-message-header {
+  background: #dc2626;
+  color: #ffffff;
+}
+.system-message-error .system-message-body {
+  background: #f7d6d6;
+  color: #000000;
+}

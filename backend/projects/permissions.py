@@ -1,34 +1,39 @@
+from django.shortcuts import get_object_or_404
+from django.db.models import Q
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 
 def can_read(user, opportunity):
     return (
-        opportunity.owner_id == user.pk
-        or opportunity.editors.filter(pk=user.pk).exists()
-        or opportunity.guests.filter(pk=user.pk).exists()
+        opportunity.manager_id == user.pk
+        or opportunity.delegates.filter(pk=user.pk).exists()
+        or opportunity.stakeholders.filter(pk=user.pk).exists()
+        or opportunity.assoc_agencies.filter(Q(admin_id=user.pk) | Q(memberships__user_id=user.pk)).exists()
     )
 
 
 def can_write(user, opportunity):
-    return opportunity.owner_id == user.pk or opportunity.editors.filter(pk=user.pk).exists()
+    return opportunity.manager_id == user.pk or opportunity.delegates.filter(pk=user.pk).exists()
 
 
 def can_invite(user, opportunity):
-    """Whether `user` may add a new member (as guest or editor) to `opportunity`."""
-    return opportunity.owner_id == user.pk
+    """Whether `user` may add a new member (as delegate or stakeholder) to `opportunity`."""
+    return opportunity.manager_id == user.pk
 
 
 def can_manage_roles(user, opportunity):
     """Whether `user` may change or revoke an existing member's role on `opportunity`."""
-    return opportunity.owner_id == user.pk
+    return opportunity.manager_id == user.pk
 
 
 class OpportunityAccessPermission(BasePermission):
     """
-    Object-level permission shared by Opportunity, Strategy, Intervention,
-    and Project viewsets. Every model in the hierarchy implements
-    get_opportunity() so this one class can enforce owner/editor (read+write)
-    vs. guest (read-only) access without duplicating the check per model.
+    Object-level permission shared by every viewset in the Opportunity ->
+    Project -> Site -> Strategy hierarchy. Each of those models implements
+    get_opportunity() (Opportunity returns itself; the others walk up their
+    FK chain), so this single class works unchanged at every nesting level,
+    and is also what discussions.permissions builds on top of.
     """
 
     def has_object_permission(self, request, view, obj):
@@ -38,24 +43,54 @@ class OpportunityAccessPermission(BasePermission):
         return can_write(request.user, opportunity)
 
 
-class AncestorScopedMixin:
+class ProjectAncestorScopedMixin:
+    """Resolve + authorize the ancestor Opportunity from the URL, never from the client body."""
+
+    def get_ancestor(self):
+        from .models import Opportunity
+
+        return get_object_or_404(
+            Opportunity.objects.visible_to(self.request.user),
+            pk=self.kwargs['opportunity_pk'],
+        )
+
+    def perform_create(self, serializer):
+        opportunity = self.get_ancestor()
+        if not can_write(self.request.user, opportunity):
+            raise PermissionDenied('You do not have write access to this opportunity.')
+        serializer.save(opportunity=opportunity)
+
+
+class SiteAncestorScopedMixin:
+    """Resolve + authorize the ancestor Project from the URL, never from the client body."""
+
+    def get_ancestor(self):
+        from .models import Opportunity, Project
+
+        return get_object_or_404(
+            Project.objects.filter(opportunity__in=Opportunity.objects.visible_to(self.request.user)),
+            pk=self.kwargs['project_pk'],
+        )
+
+    def perform_create(self, serializer):
+        project = self.get_ancestor()
+        if not can_write(self.request.user, project.opportunity):
+            raise PermissionDenied('You do not have write access to this opportunity.')
+        serializer.save(project=project)
+
+
+class StrategyAncestorScopedMixin:
     """
-    Shared behavior for viewsets nested under an ancestor object (an
-    Opportunity for Strategy, a Strategy for Intervention or Project):
-    resolves + authorizes the ancestor from the URL, never from
-    client-supplied body data, and uses it to scope create.
+    Resolve the ancestor Site from the URL. Unlike Project/Site, Strategy rows
+    are never user-created (see Site.sync_strategies), so there's no
+    perform_create here -- just the ancestor lookup, used both for the
+    list-triggered sync and for get_serializer_context's 404 mechanism.
     """
 
     def get_ancestor(self):
-        raise NotImplementedError
+        from .models import Opportunity, Site
 
-    def perform_create(self, serializer):
-        ancestor = self.get_ancestor()
-        if not can_write(self.request.user, ancestor.get_opportunity()):
-            from rest_framework.exceptions import PermissionDenied
-
-            raise PermissionDenied('You do not have write access to this opportunity.')
-        serializer.save(**self.get_create_kwargs(ancestor))
-
-    def get_create_kwargs(self, ancestor):
-        raise NotImplementedError
+        return get_object_or_404(
+            Site.objects.filter(project__opportunity__in=Opportunity.objects.visible_to(self.request.user)),
+            pk=self.kwargs['site_pk'],
+        )

@@ -3,12 +3,12 @@ from django.db import models
 
 
 class Comment(models.Model):
-    """A threaded comment on an Opportunity, with replies capped at MAX_DEPTH."""
+    """A threaded comment on a Project, with replies capped at MAX_DEPTH."""
 
     MAX_DEPTH = 3  # root = depth 0, deepest reply = depth 3
 
-    opportunity = models.ForeignKey(
-        'projects.Opportunity',
+    project = models.ForeignKey(
+        'projects.Project',
         on_delete=models.CASCADE,
         related_name='comments',
     )
@@ -24,24 +24,35 @@ class Comment(models.Model):
         on_delete=models.PROTECT,
         related_name='comments',
     )
-    body = models.TextField()
+    # ~300 words / one page of 12pt text, at ~6.5 characters per word average.
+    body = models.TextField(max_length=2000)
     depth = models.PositiveSmallIntegerField(default=0)
     deleted_at = models.DateTimeField(null=True, blank=True)
+    removed_by_moderator = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['created_at']
         indexes = [
-            models.Index(fields=['opportunity', 'parent']),
-            models.Index(fields=['opportunity', 'created_at']),
+            models.Index(fields=['project', 'parent']),
+            models.Index(fields=['project', 'created_at']),
         ]
 
     def __str__(self):
-        return f'Comment {self.pk} on Opportunity {self.opportunity_id}'
+        return f'Comment {self.pk} on Project {self.project_id}'
 
     def get_opportunity(self):
-        return self.opportunity
+        return self.project.opportunity
+
+    def descendant_ids(self):
+        """This comment's id plus every reply id below it, walked level-by-level (no recursive SQL)."""
+        ids = [self.pk]
+        frontier = [self.pk]
+        while frontier:
+            frontier = list(Comment.objects.filter(parent_id__in=frontier).values_list('pk', flat=True))
+            ids.extend(frontier)
+        return ids
 
 
 class CommentVote(models.Model):

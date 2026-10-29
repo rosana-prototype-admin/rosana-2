@@ -14,7 +14,8 @@ class FocusAreaAdmin(admin.ModelAdmin):
 
 @admin.register(InterventionType)
 class InterventionTypeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'is_active')
-    list_filter = ('is_active', 'focus_areas')
-    search_fields = ('name', 'description')
+    list_display = ('name', 'category', 'cmf', 'is_active')
+    list_filter = ('is_active', 'category', 'focus_areas')
+    search_fields = ('name', 'category', 'description', 'cmf__code', 'cmf__title')
+    autocomplete_fields = ('cmf',)
     filter_horizontal = ('focus_areas',)

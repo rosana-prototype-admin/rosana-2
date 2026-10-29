@@ -22,6 +22,12 @@ export function AuthProvider({ children }) {
     return data
   }, [])
 
+  const updateUser = useCallback(async (payload) => {
+    const { data } = await client.patch('/auth/me/', payload)
+    setUser(data)
+    return data
+  }, [])
+
   useEffect(() => {
     async function restoreSession() {
       const refreshToken = localStorage.getItem('refreshToken')
@@ -55,6 +61,14 @@ export function AuthProvider({ children }) {
     [fetchCurrentUser],
   )
 
+  const register = useCallback(
+    async (payload) => {
+      await client.post('/auth/register/', payload)
+      return login(payload.username, payload.password)
+    },
+    [login],
+  )
+
   const logout = useCallback(async () => {
     const refreshToken = localStorage.getItem('refreshToken')
     clearSession()
@@ -68,8 +82,8 @@ export function AuthProvider({ children }) {
   }, [clearSession])
 
   const value = useMemo(
-    () => ({ user, isAuthenticated: Boolean(user), isLoading, login, logout }),
-    [user, isLoading, login, logout],
+    () => ({ user, isAuthenticated: Boolean(user), isLoading, login, register, logout, updateUser }),
+    [user, isLoading, login, register, logout, updateUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

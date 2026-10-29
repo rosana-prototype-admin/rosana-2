@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import './ConfirmDialog.css'
+import '../styles/dialog.css'
 
 export default function ConfirmDialog({
   isOpen,
@@ -24,9 +24,9 @@ export default function ConfirmDialog({
   if (!isOpen) return null
 
   return (
-    <div className="confirm-dialog-overlay" onClick={onCancel}>
+    <div className="dialog-overlay" onClick={onCancel}>
       <div
-        className="confirm-dialog"
+        className="dialog-card"
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
@@ -34,13 +34,13 @@ export default function ConfirmDialog({
       >
         <h3 id="confirm-dialog-title">{title}</h3>
         <p>{message}</p>
-        <div className="confirm-dialog-actions">
-          <button type="button" className="confirm-dialog-cancel" onClick={onCancel} disabled={isBusy}>
+        <div className="dialog-actions">
+          <button type="button" className="dialog-button dialog-button-cancel" onClick={onCancel} disabled={isBusy}>
             {cancelLabel}
           </button>
           <button
             type="button"
-            className={isDangerous ? 'confirm-dialog-confirm-danger' : 'confirm-dialog-confirm'}
+            className={`dialog-button ${isDangerous ? 'dialog-button-danger' : 'dialog-button-primary'}`}
             onClick={onConfirm}
             disabled={isBusy}
           >

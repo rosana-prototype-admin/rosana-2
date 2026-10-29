@@ -12,13 +12,12 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('projects', '0002_rename_project_to_opportunity'),
-        # analysis.0001_initial's Projection.course_of_action FK targets
-        # 'projects.courseofaction' by name. Without this explicit edge, the
-        # migration planner is free to schedule this rename before that
-        # CreateModel runs (it only declares a dependency on
-        # projects.0001_initial), which breaks the FK's target resolution
-        # during replay even though final state is consistent.
-        ('analysis', '0001_initial'),
+        # This migration previously also depended on ('analysis', '0001_initial')
+        # to avoid a cross-app FK-target-resolution ordering hazard (the
+        # analysis app's Projection model targeted 'projects.courseofaction'
+        # by name). The analysis app -- and Projection with it -- has since
+        # been removed entirely, so that dependency no longer resolves to
+        # anything and has been dropped.
     ]
 
     operations = [

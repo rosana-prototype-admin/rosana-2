@@ -14,4 +14,8 @@ urlpatterns = [
     path('api/', include('focusareas.urls')),
     path('api/', include('projects.urls')),
     path('api/', include('discussions.urls')),
+    path('api/', include('groups.urls')),
+    path('api/', include('notifications.urls')),
+    path('api/', include('cmfs.urls')),
+    path('api/', include('crashdata.urls')),
 ]

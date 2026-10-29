@@ -1,0 +1,78 @@
+.custom-cmf-page {
+  align-items: stretch;
+}
+
+.cmf-setup-card,
+.cmf-saved-section {
+  max-width: 1000px;
+  align-self: center;
+}
+
+.cmf-setup-intro {
+  margin: -8px 0 0;
+  color: var(--text);
+}
+
+.cmf-help {
+  width: 100%;
+  max-width: 1000px;
+  align-self: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.cmf-help summary {
+  padding: 12px 16px;
+  color: var(--text-h);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+}
+
+.cmf-help-content {
+  padding: 0 16px 12px;
+  color: var(--text);
+  line-height: var(--leading-normal);
+}
+
+.cmf-help-content p {
+  margin: 0 0 12px;
+}
+
+.cmf-help-content ul {
+  margin: 0 0 12px;
+  padding-left: 24px;
+}
+
+.cmf-form-actions,
+.cmf-table-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cmf-secondary-button,
+.cmf-table-actions button {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.cmf-secondary-button:hover,
+.cmf-table-actions button:hover:not(:disabled) {
+  border-color: var(--accent-border);
+}
+
+.cmf-table-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cmf-table-actions {
+  flex-wrap: wrap;
+}

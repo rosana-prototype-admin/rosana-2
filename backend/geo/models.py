@@ -1,10 +1,29 @@
 from django.db import models
 
 
+class CountryCode(models.Model):
+    """An ISO 3166-1 country/territory code."""
+
+    alpha_2 = models.CharField(max_length=2, primary_key=True)
+    alpha_3 = models.CharField(max_length=3, unique=True)
+    name_short = models.CharField(max_length=255)
+    name_long = models.CharField(max_length=255)
+
+    class Meta:
+        ordering = ['name_short']
+
+    def __str__(self):
+        return self.name_short
+
+
 class Jcode(models.Model):
     """A unique identifier for a geographic jurisdiction (state/county/place)."""
 
     id = models.CharField(max_length=20, primary_key=True)
+    # Every Jcode currently comes from Census place-code/population-estimate
+    # files, which are exclusively US -- 'US' is a sensible default rather
+    # than a required field every import/creation site must fill in.
+    country_code = models.ForeignKey(CountryCode, on_delete=models.PROTECT, related_name='jcodes', default='US')
     state = models.CharField(max_length=100)
     county = models.CharField(max_length=100, blank=True)
     place_name_short = models.CharField(max_length=255)

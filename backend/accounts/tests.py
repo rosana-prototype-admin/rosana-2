@@ -3,6 +3,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from geo.models import Jcode
+from groups.models import Group
 
 from .models import User
 
@@ -50,6 +51,45 @@ class RegistrationAndAuthTests(APITestCase):
         user.refresh_from_db()
         self.assertEqual(user.subscription_type, 'none')
 
+    def test_user_preferences_have_defaults_and_can_be_updated(self):
+        user = User.objects.create_user(username='dana', email='dana@example.com', password='StrongPass123!')
+        self.client.force_authenticate(user=user)
+
+        response = self.client.get(reverse('me'))
+        self.assertEqual(response.data['language'], 'en-US')
+        self.assertEqual(response.data['currency'], 'USD')
+        self.assertEqual(response.data['length_unit'], 'm')
+        self.assertEqual(response.data['distance_unit'], 'km')
+        self.assertEqual(response.data['speed_unit'], 'km/h')
+        self.assertEqual(response.data['area_small_unit'], 'm2')
+        self.assertEqual(response.data['area_large_unit'], 'ha')
+        self.assertEqual(response.data['volume_unit'], 'L')
+
+        response = self.client.patch(
+            reverse('me'),
+            {
+                'language': 'fr-CA',
+                'currency': 'CAD',
+                'length_unit': 'ft',
+                'distance_unit': 'mi',
+                'speed_unit': 'mph',
+                'area_small_unit': 'sq ft',
+                'area_large_unit': 'ac',
+                'volume_unit': 'gal (Imp)',
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        user.refresh_from_db()
+        self.assertEqual(user.language, 'fr-CA')
+        self.assertEqual(user.currency, 'CAD')
+        self.assertEqual(user.length_unit, 'ft')
+        self.assertEqual(user.distance_unit, 'mi')
+        self.assertEqual(user.speed_unit, 'mph')
+        self.assertEqual(user.area_small_unit, 'sq ft')
+        self.assertEqual(user.area_large_unit, 'ac')
+        self.assertEqual(user.volume_unit, 'gal (Imp)')
+
 
 class UserSearchTests(APITestCase):
     def setUp(self):
@@ -69,8 +109,10 @@ class UserSearchTests(APITestCase):
             id='US1900100000', state='Iowa', county='Adair', place_name_short='Adair County',
             place_name_long='Adair County',
         )
-        self.alice.jcodes.add(self.jcode)
-        self.bob.jcodes.add(self.other_jcode)
+        alice_group = Group.objects.create(name='Alice Group', admin=self.alice)
+        alice_group.jcodes.add(self.jcode)
+        bob_group = Group.objects.create(name='Bob Group', admin=self.bob)
+        bob_group.jcodes.add(self.other_jcode)
 
         self.client.force_authenticate(user=self.searcher)
 

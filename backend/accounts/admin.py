@@ -14,7 +14,6 @@ class UserAdmin(DjangoUserAdmin):
                     'secondary_email',
                     'company',
                     'subscription_type',
-                    'jcodes',
                 )
             },
         ),
@@ -27,4 +26,3 @@ class UserAdmin(DjangoUserAdmin):
         'is_staff',
     )
     list_filter = DjangoUserAdmin.list_filter + ('subscription_type',)
-    filter_horizontal = DjangoUserAdmin.filter_horizontal + ('jcodes',)

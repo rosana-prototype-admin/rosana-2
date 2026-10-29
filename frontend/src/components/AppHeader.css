@@ -29,6 +29,41 @@
   color: var(--text-h);
 }
 
+.app-header-settings {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: var(--font-medium);
+  cursor: pointer;
+}
+
+.app-header-settings:hover {
+  color: var(--text-h);
+}
+
+.app-header-notifications {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.notification-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: var(--font-semibold);
+  line-height: 1;
+}
+
 .app-header-user {
   display: flex;
   align-items: center;

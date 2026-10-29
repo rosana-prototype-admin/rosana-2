@@ -5,26 +5,25 @@ from . import views
 
 router = DefaultRouter()
 router.register('opportunities', views.OpportunityViewSet, basename='opportunity')
-router.register('strategies', views.StrategyViewSet, basename='strategy')
-router.register('interventions', views.InterventionViewSet, basename='intervention')
 router.register('projects', views.ProjectViewSet, basename='project')
-router.register('organizations', views.OrganizationViewSet, basename='organization')
+router.register('sites', views.SiteViewSet, basename='site')
+router.register('strategies', views.StrategyViewSet, basename='strategy')
 
 nested_urlpatterns = [
     path(
-        'opportunities/<int:opportunity_pk>/strategies/',
-        views.StrategyViewSet.as_view({'get': 'list', 'post': 'create'}),
-        name='opportunity-strategy-list',
-    ),
-    path(
-        'strategies/<int:strategy_pk>/interventions/',
-        views.InterventionViewSet.as_view({'get': 'list', 'post': 'create'}),
-        name='strategy-intervention-list',
-    ),
-    path(
-        'strategies/<int:strategy_pk>/projects/',
+        'opportunities/<int:opportunity_pk>/projects/',
         views.ProjectViewSet.as_view({'get': 'list', 'post': 'create'}),
-        name='strategy-project-list',
+        name='opportunity-project-list',
+    ),
+    path(
+        'projects/<int:project_pk>/sites/',
+        views.SiteViewSet.as_view({'get': 'list', 'post': 'create'}),
+        name='project-site-list',
+    ),
+    path(
+        'sites/<int:site_pk>/strategies/',
+        views.StrategyViewSet.as_view({'get': 'list'}),
+        name='site-strategy-list',
     ),
 ]
 

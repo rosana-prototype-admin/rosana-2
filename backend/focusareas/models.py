@@ -33,10 +33,26 @@ class FocusArea(models.Model):
 
 
 class InterventionType(models.Model):
-    """Admin-managed catalog of intervention types, constrained to applicable focus areas."""
+    """
+    Admin-managed catalog of intervention types, constrained to applicable
+    focus areas. `name` alone is not unique: the same category can pair with
+    different names, and -- more importantly -- the same (name, category)
+    pair can independently apply to more than one focus area (e.g. "Drug-
+    Impaired Driving Laws" / "Policy" applies to both Cannabis and Other
+    Drugs), in which case it's one row with multiple focus_areas rather than
+    duplicate rows.
+    """
 
-    name = models.CharField(max_length=255, unique=True)
+    name = models.CharField(max_length=255)
+    category = models.CharField(max_length=255, blank=True, default='')
     description = models.TextField(blank=True)
+    cmf = models.ForeignKey(
+        'cmfs.CMF',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='intervention_types',
+    )
     focus_areas = models.ManyToManyField(
         FocusArea,
         related_name='intervention_types',
@@ -45,7 +61,10 @@ class InterventionType(models.Model):
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        ordering = ['name']
+        ordering = ['category', 'name']
+        constraints = [
+            models.UniqueConstraint(fields=['name', 'category'], name='unique_interventiontype_name_category'),
+        ]
 
     def __str__(self):
-        return self.name
+        return f'{self.category} - {self.name}' if self.category else self.name

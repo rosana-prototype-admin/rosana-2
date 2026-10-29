@@ -1,0 +1,17 @@
+.jcode-selection-table tbody tr {
+  cursor: default;
+}
+
+.jcode-selection-table tbody tr:hover {
+  background: var(--accent-bg);
+}
+
+.jcode-selection-checkbox-column,
+.jcode-selection-checkbox-cell {
+  width: 72px;
+  text-align: center;
+}
+
+.jcode-selection-checkbox-cell input {
+  width: auto;
+}

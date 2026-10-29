@@ -1,4 +1,6 @@
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { listMyGroups } from '../api/groups'
 import { useAuth } from '../hooks/useAuth'
 import './SplashPage.css'
 
@@ -7,17 +9,49 @@ const SUBSCRIPTION_LABELS = {
   basic: 'Basic',
   premium: 'Premium',
   admin: 'Admin',
+  crossroads: 'Crossroads',
+  borough: 'Borough',
+  ville: 'Ville',
+  shire: 'Shire',
+  provincia: 'Provincia',
+  comarca: 'Comarca',
+  metro: 'Metro',
+  commonwealth: 'Commonwealth',
+  republic: 'Republic',
 }
 
 export default function SplashPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const [groups, setGroups] = useState([])
+
+  useEffect(() => {
+    let cancelled = false
+    listMyGroups()
+      .then((data) => {
+        if (!cancelled) setGroups(data)
+      })
+      .catch(() => {
+        if (!cancelled) setGroups([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   if (!user) {
     return null
   }
 
   const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ')
+  const jurisdictions = useMemo(() => {
+    const seen = new Set()
+    return groups.flatMap((group) => group.jcodes || []).filter((jcode) => {
+      if (seen.has(jcode.id)) return false
+      seen.add(jcode.id)
+      return true
+    })
+  }, [groups])
 
   return (
     <main className="splash-page">
@@ -57,15 +91,15 @@ export default function SplashPage() {
           <div>
             <dt className="label">Jurisdictions</dt>
             <dd>
-              {user.jcodes?.length
-                ? user.jcodes.map((jcode) => jcode.place_name_short).join(', ')
+              {jurisdictions.length
+                ? jurisdictions.map((jcode) => jcode.place_name_short).join(', ')
                 : 'None assigned'}
             </dd>
           </div>
         </dl>
 
-        <button type="button" className="splash-primary" onClick={() => navigate('/projects')}>
-          Go to Projects
+        <button type="button" className="splash-primary" onClick={() => navigate('/opportunities')}>
+          Go to Opportunities
         </button>
       </div>
     </main>

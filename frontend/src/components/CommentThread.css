@@ -1,0 +1,86 @@
+.comment-thread {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.comment-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.comment-moderation-toggle {
+  align-self: flex-start;
+}
+
+.comment-moderation-toggle button {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.comment-moderation-toggle button:hover:not(:disabled) {
+  border-color: var(--accent-border);
+}
+
+.comment-moderation-toggle button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.comment-composer textarea,
+.comment-edit-form textarea,
+.comment-reply-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: var(--text-base);
+  font-family: inherit;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  resize: vertical;
+}
+
+.comment-composer textarea:focus,
+.comment-edit-form textarea:focus,
+.comment-reply-form textarea:focus {
+  outline: none;
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.comment-composer button[type='submit'] {
+  align-self: flex-start;
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  padding: 10px 18px;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.comment-composer button[type='submit']:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.comment-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}

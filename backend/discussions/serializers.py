@@ -6,7 +6,7 @@ from .models import Comment
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    opportunity = serializers.PrimaryKeyRelatedField(read_only=True)
+    project = serializers.PrimaryKeyRelatedField(read_only=True)
     parent = serializers.PrimaryKeyRelatedField(
         queryset=Comment.objects.all(), required=False, allow_null=True
     )
@@ -19,7 +19,7 @@ class CommentSerializer(serializers.ModelSerializer):
         model = Comment
         fields = [
             'id',
-            'opportunity',
+            'project',
             'parent',
             'author',
             'body',
@@ -31,7 +31,7 @@ class CommentSerializer(serializers.ModelSerializer):
             'created_at',
             'modified_at',
         ]
-        read_only_fields = ['id', 'opportunity', 'depth', 'deleted_at', 'created_at', 'modified_at']
+        read_only_fields = ['id', 'project', 'depth', 'deleted_at', 'created_at', 'modified_at']
 
     def get_my_vote(self, obj):
         votes = getattr(obj, 'my_votes', None)
@@ -46,11 +46,11 @@ class CommentSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         parent = attrs.get('parent')
-        opportunity = self.context.get('opportunity') or getattr(self.instance, 'opportunity', None)
+        project = self.context.get('project') or getattr(self.instance, 'project', None)
         if parent is not None:
-            if opportunity and parent.opportunity_id != opportunity.pk:
+            if project and parent.project_id != project.pk:
                 raise serializers.ValidationError(
-                    {'parent': "Parent comment does not belong to this opportunity."}
+                    {'parent': "Parent comment does not belong to this project."}
                 )
             depth = parent.depth + 1
             if depth > Comment.MAX_DEPTH:
@@ -65,6 +65,9 @@ class CommentSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
         if instance.deleted_at:
-            data['body'] = None
             data['author'] = None
+            # The underlying body is preserved in the DB either way; only the
+            # API representation is tombstoned, so moderator removals get a
+            # distinct message instead of the generic blank-out.
+            data['body'] = '[Comment removed by moderator]' if instance.removed_by_moderator else None
         return data

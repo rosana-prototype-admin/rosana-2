@@ -76,3 +76,11 @@ class InterventionTypeApiTests(APITestCase):
         response = self.client.get('/api/intervention-types/')
         names = [item['name'] for item in response.data]
         self.assertNotIn('Speed Camera', names)
+
+    def test_seeded_interventions_expose_their_associated_cmf(self):
+        response = self.client.get('/api/intervention-types/')
+        rrfb = next(item for item in response.data if item['name'] == 'Rectangular Rapid Flashing Beacons (RRFBs)')
+
+        self.assertEqual(rrfb['cmf']['code'], 'cmf-rrfb')
+        self.assertEqual(len(rrfb['cmf']['coefficient_array']), 5)
+        self.assertEqual(len(rrfb['cmf']['coefficient_array'][0]), 5)

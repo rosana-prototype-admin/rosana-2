@@ -8,9 +8,9 @@ router.register('comments', views.CommentViewSet, basename='comment')
 
 nested_urlpatterns = [
     path(
-        'opportunities/<int:opportunity_pk>/comments/',
+        'projects/<int:project_pk>/comments/',
         views.CommentViewSet.as_view({'get': 'list', 'post': 'create'}),
-        name='opportunity-comment-list',
+        name='project-comment-list',
     ),
 ]
 

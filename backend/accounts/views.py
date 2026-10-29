@@ -25,10 +25,10 @@ class UserSearchView(generics.ListAPIView):
 
     - `q` matches (case-insensitive, partial) against username, email, first
       or last name. Requires at least MIN_QUERY_LENGTH characters.
-    - `jcode` filters to users with that Jcode assigned (Jcode's primary key
-      is the Census place code string, e.g. "US1900000000", not an integer).
-      Naturally bounded (a jurisdiction's user list is small), so it's
-      allowed on its own.
+    - `jcode` filters to users affiliated with a group that has that Jcode
+      assigned (Jcode's primary key is the Census place code string, e.g.
+      "US1900000000", not an integer). Naturally bounded (a jurisdiction's
+      user list is small), so it's allowed on its own.
     - Neither param -> empty result, not the full user directory.
     """
 
@@ -47,7 +47,10 @@ class UserSearchView(generics.ListAPIView):
         queryset = User.objects.all()
 
         if jcode:
-            queryset = queryset.filter(jcodes__id=jcode)
+            queryset = queryset.filter(
+                Q(administered_groups__jcodes__id=jcode)
+                | Q(memberships__group__jcodes__id=jcode)
+            )
 
         if query:
             if len(query) < self.MIN_QUERY_LENGTH:

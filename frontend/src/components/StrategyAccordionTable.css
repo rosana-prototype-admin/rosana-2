@@ -1,0 +1,40 @@
+.strategy-category-row {
+  background: var(--code-bg);
+  cursor: default;
+}
+
+/* Higher specificity than DataTable.css's `.data-table tbody tr:hover` --
+   category rows aren't a selectable data row, so they shouldn't pick up the
+   same accent-bg hover tint leaf rows use for hover/selection. */
+table.strategy-accordion tbody tr.strategy-category-row:hover {
+  background: var(--code-bg);
+}
+
+.strategy-category-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 4px;
+  border: none;
+  background: none;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-h);
+  text-align: left;
+  cursor: pointer;
+}
+
+.strategy-category-arrow {
+  display: inline-flex;
+  transition: transform 0.15s ease;
+  color: var(--accent);
+}
+
+.strategy-category-toggle[aria-expanded='true'] .strategy-category-arrow {
+  transform: rotate(90deg);
+}
+
+.strategy-row .strategy-name-cell {
+  padding-left: 28px;
+}

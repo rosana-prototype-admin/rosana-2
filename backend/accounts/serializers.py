@@ -1,8 +1,6 @@
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
-from geo.serializers import JcodeSerializer
-
 from .models import User
 
 
@@ -32,8 +30,6 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    jcodes = JcodeSerializer(many=True, read_only=True)
-
     class Meta:
         model = User
         fields = [
@@ -45,9 +41,16 @@ class UserSerializer(serializers.ModelSerializer):
             'last_name',
             'company',
             'subscription_type',
-            'jcodes',
+            'language',
+            'currency',
+            'length_unit',
+            'distance_unit',
+            'speed_unit',
+            'area_small_unit',
+            'area_large_unit',
+            'volume_unit',
         ]
-        read_only_fields = ['id', 'username', 'subscription_type', 'jcodes']
+        read_only_fields = ['id', 'username', 'subscription_type']
 
 
 class UserSearchResultSerializer(serializers.ModelSerializer):

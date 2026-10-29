@@ -1,70 +1,55 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getProject, updateProject } from '../api/projects'
-import { getFocusArea, listFocusAreaChildren, listFocusAreaOptions } from '../api/focusAreas'
-import {
-  cloneCourseOfAction,
-  createCourseOfAction,
-  deleteCourseOfAction,
-  listCoursesOfAction,
-} from '../api/coursesOfAction'
+import { getOpportunity } from '../api/opportunities'
+import { createSite, deleteSite, listSites } from '../api/sites'
 import DataTable from '../components/DataTable'
 import ConfirmDialog from '../components/ConfirmDialog'
+import CommentThread from '../components/CommentThread'
 import { useAuth } from '../hooks/useAuth'
 import { formatDate } from '../utils/formatDate'
 import '../styles/editorForm.css'
 import '../styles/formFeedback.css'
 import '../styles/actionToolbar.css'
-import './ProjectEditorPage.css'
 
 export default function ProjectEditorPage() {
   const { id } = useParams()
-  const { user } = useAuth()
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   const [project, setProject] = useState(null)
+  const [opportunity, setOpportunity] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
 
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [focusAreaOptions, setFocusAreaOptions] = useState([])
-  const [selectedL1L2, setSelectedL1L2] = useState('')
-  const [childOptions, setChildOptions] = useState([])
-  const [selectedChild, setSelectedChild] = useState('')
-
+  const [title, setTitle] = useState('')
+  const [comment, setComment] = useState('')
+  const [statusValue, setStatusValue] = useState(0)
   const [baseline, setBaseline] = useState(null)
   const [saveError, setSaveError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [savedAt, setSavedAt] = useState(null)
-  const [isLoadingChildren, setIsLoadingChildren] = useState(false)
 
-  const [coursesOfAction, setCoursesOfAction] = useState([])
-  const [isLoadingCoas, setIsLoadingCoas] = useState(true)
-  const [coaError, setCoaError] = useState('')
-  const [selectedCoaId, setSelectedCoaId] = useState(null)
-  const [isCreatingCoa, setIsCreatingCoa] = useState(false)
-  const [isCloningCoa, setIsCloningCoa] = useState(false)
-  const [isDeletingCoa, setIsDeletingCoa] = useState(false)
-  const [isCoaDeleteDialogOpen, setIsCoaDeleteDialogOpen] = useState(false)
+  const [sites, setSites] = useState([])
+  const [isLoadingSites, setIsLoadingSites] = useState(false)
+  const [siteError, setSiteError] = useState('')
+  const [selectedSiteId, setSelectedSiteId] = useState(null)
+  const [isCreatingSite, setIsCreatingSite] = useState(false)
+  const [isDeletingSite, setIsDeletingSite] = useState(false)
+  const [isSiteDeleteDialogOpen, setIsSiteDeleteDialogOpen] = useState(false)
 
-  const canWrite =
-    project && user && (project.owner === user.id || project.editors?.includes(user.id))
-
-  const loadChildren = useCallback(async (parentId) => {
-    if (!parentId) {
-      setChildOptions([])
-      return []
-    }
-    setIsLoadingChildren(true)
+  const loadSites = useCallback(async () => {
+    setIsLoadingSites(true)
     try {
-      const children = await listFocusAreaChildren(parentId)
-      setChildOptions(children)
-      return children
+      const data = await listSites(id)
+      setSites(data)
+      setSiteError('')
+    } catch {
+      setSiteError('Unable to load sites. Please try again.')
     } finally {
-      setIsLoadingChildren(false)
+      setIsLoadingSites(false)
     }
-  }, [])
+  }, [id])
 
   useEffect(() => {
     let cancelled = false
@@ -73,31 +58,22 @@ export default function ProjectEditorPage() {
       setIsLoading(true)
       setLoadError('')
       try {
-        const [projectData, options] = await Promise.all([getProject(id), listFocusAreaOptions()])
+        const data = await getProject(id)
         if (cancelled) return
-
-        const focusArea = await getFocusArea(projectData.focus_area)
-        const l1l2Id = focusArea.level === 2 ? focusArea.id : focusArea.parent
-        await loadChildren(l1l2Id)
+        setProject(data)
+        setTitle(data.title)
+        setComment(data.comment)
+        setStatusValue(data.status)
+        setBaseline({ title: data.title, comment: data.comment, status: data.status })
+        // Needed for the Comments section's moderator check (opportunity
+        // manager), same as OpportunityEditorPage computes for its own page.
+        const opportunityData = await getOpportunity(data.opportunity)
         if (cancelled) return
-
-        setProject(projectData)
-        setFocusAreaOptions(options)
-        setName(projectData.name)
-        setDescription(projectData.description)
-        setSelectedL1L2(l1l2Id)
-        setSelectedChild(focusArea.level === 3 ? focusArea.id : '')
-        setBaseline({
-          name: projectData.name,
-          description: projectData.description,
-          focusAreaId: projectData.focus_area,
-        })
+        setOpportunity(opportunityData)
       } catch (err) {
         if (!cancelled) {
           setLoadError(
-            err.response?.status === 404
-              ? 'Project not found.'
-              : "Unable to load this project. You may not have access to it.",
+            err.response?.status === 404 ? 'Project not found.' : 'Unable to load this project. You may not have access to it.',
           )
         }
       } finally {
@@ -109,151 +85,49 @@ export default function ProjectEditorPage() {
     return () => {
       cancelled = true
     }
-  }, [id, loadChildren])
-
-  const loadCoursesOfAction = useCallback(async () => {
-    try {
-      const data = await listCoursesOfAction(id)
-      setCoursesOfAction(data)
-      setCoaError('')
-    } catch {
-      setCoaError('Unable to load Courses of Action. Please try again.')
-    } finally {
-      setIsLoadingCoas(false)
-    }
   }, [id])
 
   useEffect(() => {
     let cancelled = false
     async function run() {
-      if (!cancelled) await loadCoursesOfAction()
+      if (!cancelled) await loadSites()
     }
     run()
     return () => {
       cancelled = true
     }
-  }, [loadCoursesOfAction])
+  }, [loadSites])
 
-  async function handleNewCoa() {
-    setCoaError('')
-    setIsCreatingCoa(true)
-    try {
-      const coa = await createCourseOfAction(id, { name: 'Untitled Course of Action', description: '' })
-      navigate(`/projects/${id}/courses-of-action/${coa.id}`)
-    } catch {
-      setCoaError('Unable to create a new Course of Action. Please try again.')
-    } finally {
-      setIsCreatingCoa(false)
-    }
-  }
-
-  const selectedCoa = coursesOfAction.find((coa) => coa.id === selectedCoaId) || null
-
-  function handleEditCoa() {
-    if (selectedCoa) navigate(`/projects/${id}/courses-of-action/${selectedCoa.id}`)
-  }
-
-  async function handleCloneCoa() {
-    if (!selectedCoa) return
-    setCoaError('')
-    setIsCloningCoa(true)
-    try {
-      await cloneCourseOfAction(selectedCoa.id)
-      await loadCoursesOfAction()
-    } catch {
-      setCoaError('Unable to clone the Course of Action. Please try again.')
-    } finally {
-      setIsCloningCoa(false)
-    }
-  }
-
-  async function handleConfirmDeleteCoa() {
-    if (!selectedCoa) return
-    setCoaError('')
-    setIsDeletingCoa(true)
-    try {
-      await deleteCourseOfAction(selectedCoa.id)
-      setSelectedCoaId(null)
-      await loadCoursesOfAction()
-    } catch {
-      setCoaError('Unable to delete the Course of Action. Please try again.')
-    } finally {
-      setIsDeletingCoa(false)
-      setIsCoaDeleteDialogOpen(false)
-    }
-  }
-
-  const coaColumns = useMemo(
-    () => [
-      { key: 'name', header: 'Name' },
-      {
-        key: 'description',
-        header: 'Description',
-        render: (coa) => coa.description || <span className="text-sm">—</span>,
-      },
-      {
-        key: 'projection',
-        header: 'Projection',
-        sortValue: (coa) => coa.projection?.status || '',
-        render: (coa) => coa.projection?.status || '—',
-      },
-      {
-        key: 'modified_at',
-        header: 'Last modified',
-        render: (coa) => formatDate(coa.modified_at),
-      },
-    ],
-    [],
-  )
-
-  async function handleL1L2Change(event) {
-    const newId = Number(event.target.value)
-    setSelectedL1L2(newId)
-    setSelectedChild('')
-    await loadChildren(newId)
-  }
-
-  const finalFocusAreaId = childOptions.length > 0 ? selectedChild : selectedL1L2
+  const canWrite =
+    opportunity && user && (opportunity.manager === user.id || opportunity.delegates?.includes(user.id))
 
   const isDirty =
-    baseline &&
-    (name !== baseline.name ||
-      description !== baseline.description ||
-      Number(finalFocusAreaId) !== Number(baseline.focusAreaId))
+    baseline && (title !== baseline.title || comment !== baseline.comment || Number(statusValue) !== Number(baseline.status))
 
   function handleBack() {
     if (isDirty && !window.confirm('You have unsaved changes. Leave without saving?')) {
       return
     }
-    navigate('/projects')
+    navigate(`/opportunities/${project.opportunity}`)
   }
 
   async function handleSave(event) {
     event.preventDefault()
     setSaveError('')
 
-    if (!name.trim()) {
-      setSaveError('Name is required.')
-      return
-    }
-    if (isLoadingChildren) {
-      setSaveError('Still loading focus area options — please try again in a moment.')
-      return
-    }
-    if (childOptions.length > 0 && !selectedChild) {
-      setSaveError('Please select a more specific focus area.')
+    if (!title.trim()) {
+      setSaveError('Title is required.')
       return
     }
 
     setIsSaving(true)
     try {
-      const updated = await updateProject(id, {
-        name: name.trim(),
-        description,
-        focus_area: finalFocusAreaId,
-      })
+      const updated = await updateProject(id, { title: title.trim(), comment, status: Number(statusValue) || 0 })
       setProject(updated)
-      setBaseline({ name: updated.name, description: updated.description, focusAreaId: updated.focus_area })
+      setTitle(updated.title)
+      setComment(updated.comment)
+      setStatusValue(updated.status)
+      setBaseline({ title: updated.title, comment: updated.comment, status: updated.status })
       setSavedAt(new Date())
     } catch (err) {
       const data = err.response?.data
@@ -278,6 +152,68 @@ export default function ProjectEditorPage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [isDirty])
 
+  async function handleNewSite() {
+    setSiteError('')
+    setIsCreatingSite(true)
+    try {
+      const site = await createSite(id, { title: 'Untitled Site', comment: '' })
+      navigate(`/sites/${site.id}`)
+    } catch {
+      setSiteError('Unable to create a new site. Please try again.')
+    } finally {
+      setIsCreatingSite(false)
+    }
+  }
+
+  function handleEditSite() {
+    if (selectedSiteId) navigate(`/sites/${selectedSiteId}`)
+  }
+
+  async function handleConfirmDeleteSite() {
+    if (!selectedSiteId) return
+    setSiteError('')
+    setIsDeletingSite(true)
+    try {
+      await deleteSite(selectedSiteId)
+      setSelectedSiteId(null)
+      await loadSites()
+    } catch {
+      setSiteError('Unable to delete the site. Please try again.')
+    } finally {
+      setIsDeletingSite(false)
+      setIsSiteDeleteDialogOpen(false)
+    }
+  }
+
+  const selectedSite = sites.find((site) => site.id === selectedSiteId) || null
+
+  const siteColumns = useMemo(
+    () => [
+      { key: 'title', header: 'Name' },
+      { key: 'modified_at', header: 'Last edited', render: (site) => formatDate(site.modified_at) },
+      { key: 'created_at', header: 'Created', render: (site) => formatDate(site.created_at) },
+    ],
+    [],
+  )
+
+  const projectJcodes = useMemo(() => {
+    const uniqueJcodes = new Map()
+    sites.forEach((site) => {
+      if (site.jcode) uniqueJcodes.set(site.jcode.id, site.jcode)
+    })
+    return [...uniqueJcodes.values()]
+  }, [sites])
+
+  const projectJcodeColumns = useMemo(
+    () => [
+      { key: 'id', header: 'Jcode' },
+      { key: 'state', header: 'State' },
+      { key: 'county', header: 'County', render: (jcode) => jcode.county || '—' },
+      { key: 'place_name_short', header: 'Region' },
+    ],
+    [],
+  )
+
   if (isLoading) {
     return (
       <main className="editor-page">
@@ -292,7 +228,7 @@ export default function ProjectEditorPage() {
         <p className="form-error" role="alert">
           {loadError}
         </p>
-        <Link to="/projects">← Back to Projects</Link>
+        <Link to="/opportunities">← Back to Opportunities</Link>
       </main>
     )
   }
@@ -300,7 +236,7 @@ export default function ProjectEditorPage() {
   return (
     <main className="editor-page">
       <button type="button" className="editor-back" onClick={handleBack}>
-        ← Back to Projects
+        ← Back to Opportunity
       </button>
 
       <form className="editor-card" onSubmit={handleSave}>
@@ -317,56 +253,37 @@ export default function ProjectEditorPage() {
         {savedAt && !isDirty && !saveError && <p className="form-success text-sm">Saved.</p>}
 
         <label className="editor-field">
-          <span className="label">Name</span>
+          <span className="label">Title</span>
           <input
             type="text"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            maxLength={100}
             disabled={!canWrite}
             required
           />
         </label>
 
         <label className="editor-field">
-          <span className="label">Description</span>
+          <span className="label">Comment</span>
           <textarea
             rows={4}
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
+            value={comment}
+            onChange={(event) => setComment(event.target.value)}
+            maxLength={1000}
             disabled={!canWrite}
           />
         </label>
 
-        <div className="editor-focus-area-row">
-          <label className="editor-field">
-            <span className="label">Focus area</span>
-            <select value={selectedL1L2} onChange={handleL1L2Change} disabled={!canWrite}>
-              {focusAreaOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {childOptions.length > 0 && (
-            <label className="editor-field">
-              <span className="label">Specific focus area</span>
-              <select
-                value={selectedChild}
-                onChange={(event) => setSelectedChild(event.target.value)}
-                disabled={!canWrite || isLoadingChildren}
-              >
-                <option value="">Select…</option>
-                {childOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-        </div>
+        <label className="editor-field">
+          <span className="label">Status</span>
+          <input
+            type="number"
+            value={statusValue}
+            onChange={(event) => setStatusValue(event.target.value)}
+            disabled={!canWrite}
+          />
+        </label>
 
         <dl className="editor-meta">
           <div>
@@ -380,67 +297,98 @@ export default function ProjectEditorPage() {
         </dl>
 
         {canWrite && (
-          <button type="submit" className="editor-save" disabled={!isDirty || isSaving || isLoadingChildren}>
+          <button type="submit" className="editor-save" disabled={!isDirty || isSaving}>
             {isSaving ? 'Saving…' : 'Save'}
           </button>
         )}
       </form>
 
-      <section className="coa-section">
-        <div className="coa-section-header">
-          <h2>Courses of Action</h2>
+      <section className="editor-section">
+        <div className="editor-section-header">
+          <h2>Sites</h2>
         </div>
 
-        {coaError && (
+        {siteError && (
           <p className="form-error" role="alert">
-            {coaError}
+            {siteError}
           </p>
         )}
 
-        {canWrite && (
-          <div className="action-toolbar">
-            <button type="button" onClick={handleNewCoa} disabled={isCreatingCoa}>
-              {isCreatingCoa ? 'Creating…' : 'New'}
+        <div className="action-toolbar">
+          {canWrite && (
+            <button type="button" onClick={handleNewSite} disabled={isCreatingSite}>
+              {isCreatingSite ? 'Creating…' : 'New Site'}
             </button>
-            <button type="button" onClick={handleEditCoa} disabled={!selectedCoa}>
-              Edit
-            </button>
+          )}
+          <button type="button" onClick={handleEditSite} disabled={!selectedSite}>
+            Edit
+          </button>
+          {canWrite && (
             <button
               type="button"
-              onClick={() => setIsCoaDeleteDialogOpen(true)}
-              disabled={!selectedCoa || isDeletingCoa}
+              onClick={() => setIsSiteDeleteDialogOpen(true)}
+              disabled={!selectedSite || isDeletingSite}
             >
               Delete
             </button>
-            <button type="button" onClick={handleCloneCoa} disabled={!selectedCoa || isCloningCoa}>
-              {isCloningCoa ? 'Cloning…' : 'Clone'}
-            </button>
-          </div>
-        )}
+          )}
+        </div>
 
-        {isLoadingCoas ? (
-          <p className="text-sm">Loading Courses of Action…</p>
+        {isLoadingSites ? (
+          <p className="text-sm">Loading sites…</p>
         ) : (
           <DataTable
-            columns={coaColumns}
-            rows={coursesOfAction}
-            getRowId={(coa) => coa.id}
-            selectedId={selectedCoaId}
-            onSelectRow={setSelectedCoaId}
-            emptyMessage="No Courses of Action yet."
+            columns={siteColumns}
+            rows={sites}
+            getRowId={(site) => site.id}
+            selectedId={selectedSiteId}
+            onSelectRow={setSelectedSiteId}
+            emptyMessage="No sites yet."
           />
         )}
       </section>
 
+      <section className="editor-section">
+        <div className="editor-section-header">
+          <h2>Associated Jurisdictions</h2>
+        </div>
+
+        {isLoadingSites ? (
+          <p className="text-sm">Loading Jcodes…</p>
+        ) : (
+          <DataTable
+            columns={projectJcodeColumns}
+            rows={projectJcodes}
+            getRowId={(jcode) => jcode.id}
+            selectedId={null}
+            onSelectRow={() => {}}
+            emptyMessage="No Jcodes are assigned to this project's sites."
+          />
+        )}
+      </section>
+
+      {opportunity && (
+        <section className="editor-section">
+          <div className="editor-section-header">
+            <h2>Comments</h2>
+          </div>
+          <CommentThread
+            projectId={id}
+            isOwner={opportunity.manager === user.id}
+            commentsEnabled={project.comments_enabled}
+          />
+        </section>
+      )}
+
       <ConfirmDialog
-        isOpen={isCoaDeleteDialogOpen}
-        title="Delete Course of Action?"
-        message={`This will permanently delete "${selectedCoa?.name}" along with all of its Interventions. This cannot be undone.`}
+        isOpen={isSiteDeleteDialogOpen}
+        title="Delete site?"
+        message={`This will permanently delete "${selectedSite?.title}" and all of its Strategies. This cannot be undone.`}
         confirmLabel="Delete"
         isDangerous
-        isBusy={isDeletingCoa}
-        onConfirm={handleConfirmDeleteCoa}
-        onCancel={() => setIsCoaDeleteDialogOpen(false)}
+        isBusy={isDeletingSite}
+        onConfirm={handleConfirmDeleteSite}
+        onCancel={() => setIsSiteDeleteDialogOpen(false)}
       />
     </main>
   )
