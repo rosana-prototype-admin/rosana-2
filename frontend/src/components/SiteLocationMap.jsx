@@ -55,7 +55,7 @@ const MAP_DOCUMENT = `<!doctype html>
           wheelPxPerZoomLevel: 80,
         }).setView(fallbackCenter, 4);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
           maxZoom: 19,
           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
         }).addTo(map);
