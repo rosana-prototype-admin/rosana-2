@@ -1,14 +1,51 @@
 from django.db.models import Q
-from rest_framework import generics, permissions
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
+from rest_framework import generics, permissions, status
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
+from .email import send_verification_email
 from .models import User
 from .serializers import RegisterSerializer, UserSearchResultSerializer, UserSerializer
+from .tokens import email_verification_token
 
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
+
+    def perform_create(self, serializer):
+        user = serializer.save()
+        send_verification_email(user)
+
+
+class VerifyEmailView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        uid = request.data.get('uid', '')
+        token = request.data.get('token', '')
+        try:
+            user_id = force_str(urlsafe_base64_decode(uid))
+            user = User.objects.get(pk=user_id)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            return Response(
+                {'detail': 'This verification link is invalid or expired.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not email_verification_token.check_token(user, token):
+            return Response(
+                {'detail': 'This verification link is invalid or expired.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.email_verified = True
+        user.is_active = True
+        user.save(update_fields=['email_verified', 'is_active'])
+        return Response({'detail': 'Your email has been verified. You can now sign in.'})
 
 
 class MeView(generics.RetrieveUpdateAPIView):

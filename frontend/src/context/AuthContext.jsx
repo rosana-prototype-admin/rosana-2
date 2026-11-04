@@ -63,10 +63,10 @@ export function AuthProvider({ children }) {
 
   const register = useCallback(
     async (payload) => {
-      await client.post('/auth/register/', payload)
-      return login(payload.username, payload.password)
+      const { data } = await client.post('/auth/register/', payload)
+      return data
     },
-    [login],
+    [],
   )
 
   const logout = useCallback(async () => {

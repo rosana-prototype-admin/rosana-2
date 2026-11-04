@@ -3,6 +3,7 @@ import AppLayout from './components/AppLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import VerifyEmailPage from './pages/VerifyEmailPage'
 import SplashPage from './pages/SplashPage'
 import OpportunitiesPage from './pages/OpportunitiesPage'
 import OpportunityEditorPage from './pages/OpportunityEditorPage'
@@ -22,6 +23,7 @@ function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route path="/" element={<SplashPage />} />

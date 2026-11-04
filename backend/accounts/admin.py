@@ -12,6 +12,7 @@ class UserAdmin(DjangoUserAdmin):
             {
                 'fields': (
                     'secondary_email',
+                    'email_verified',
                     'company',
                     'subscription_type',
                 )
@@ -21,6 +22,7 @@ class UserAdmin(DjangoUserAdmin):
     list_display = (
         'username',
         'email',
+        'email_verified',
         'company',
         'subscription_type',
         'is_staff',

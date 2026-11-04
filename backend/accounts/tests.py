@@ -1,4 +1,6 @@
 from django.urls import reverse
+from django.core import mail
+from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -9,7 +11,11 @@ from .models import User
 
 
 class RegistrationAndAuthTests(APITestCase):
-    def test_register_creates_user_with_hashed_password(self):
+    @override_settings(
+        EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+        FRONTEND_BASE_URL='https://app.example.com',
+    )
+    def test_register_creates_inactive_user_and_sends_verification_email(self):
         response = self.client.post(
             reverse('register'),
             {
@@ -21,7 +27,54 @@ class RegistrationAndAuthTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         user = User.objects.get(username='alice')
         self.assertTrue(user.check_password('StrongPass123!'))
+        self.assertFalse(user.is_active)
+        self.assertFalse(user.email_verified)
         self.assertNotIn('password', response.data)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['alice@example.com'])
+        self.assertIn('https://app.example.com/verify-email?', mail.outbox[0].body)
+
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+    def test_unverified_user_cannot_sign_in_until_email_is_verified(self):
+        response = self.client.post(
+            reverse('register'),
+            {
+                'username': 'alice',
+                'email': 'alice@example.com',
+                'password': 'StrongPass123!',
+            },
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        token_response = self.client.post(
+            reverse('token_obtain_pair'),
+            {'username': 'alice', 'password': 'StrongPass123!'},
+        )
+        self.assertEqual(token_response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        user = User.objects.get(username='alice')
+        uid = mail.outbox[0].body.split('uid=')[1].split('&', 1)[0]
+        verification_token = mail.outbox[0].body.split('token=', 1)[1].split('&', 1)[0].split()[0]
+        verify_response = self.client.post(
+            reverse('verify-email'),
+            {'uid': uid, 'token': verification_token},
+        )
+        self.assertEqual(verify_response.status_code, status.HTTP_200_OK)
+        user.refresh_from_db()
+        self.assertTrue(user.is_active)
+        self.assertTrue(user.email_verified)
+
+        token_response = self.client.post(
+            reverse('token_obtain_pair'),
+            {'username': 'alice', 'password': 'StrongPass123!'},
+        )
+        self.assertEqual(token_response.status_code, status.HTTP_200_OK)
+
+        replay_response = self.client.post(
+            reverse('verify-email'),
+            {'uid': uid, 'token': verification_token},
+        )
+        self.assertEqual(replay_response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_obtain_token_and_fetch_me(self):
         User.objects.create_user(username='bob', email='bob@example.com', password='StrongPass123!')

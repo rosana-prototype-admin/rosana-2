@@ -56,3 +56,8 @@ revealing its existence.
 
 The existing endpoint shapes remain unchanged during the foundation milestone.
 New API areas may use `/api/v1/` when a versioned contract is needed.
+
+Account onboarding details:
+
+- `POST /api/auth/register/` creates an inactive account and sends a verification email.
+- `POST /api/auth/verify-email/` accepts the `uid` and `token` from that email and activates the account.

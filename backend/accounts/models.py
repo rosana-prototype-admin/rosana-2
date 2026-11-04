@@ -69,6 +69,10 @@ class VolumeUnit(models.TextChoices):
 
 class User(AbstractUser):
     email = models.EmailField('email address', unique=True)
+    # Existing accounts are treated as verified by the migration default. New
+    # self-service registrations explicitly set this to False until the user
+    # follows the verification link sent to their email address.
+    email_verified = models.BooleanField(default=True)
     secondary_email = models.EmailField(blank=True)
     company = models.CharField(max_length=255, blank=True)
     subscription_type = models.CharField(
