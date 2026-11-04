@@ -39,11 +39,6 @@ export default function SplashPage() {
     }
   }, [])
 
-  if (!user) {
-    return null
-  }
-
-  const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ')
   const jurisdictions = useMemo(() => {
     const seen = new Set()
     return groups.flatMap((group) => group.jcodes || []).filter((jcode) => {
@@ -52,6 +47,12 @@ export default function SplashPage() {
       return true
     })
   }, [groups])
+
+  if (!user) {
+    return null
+  }
+
+  const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ')
 
   return (
     <main className="splash-page">

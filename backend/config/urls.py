@@ -7,7 +7,11 @@ The `urlpatterns` list routes URLs to views. For more information please see:
 from django.contrib import admin
 from django.urls import include, path
 
+from . import health
+
 urlpatterns = [
+    path('health/', health.liveness, name='health'),
+    path('health/ready/', health.readiness, name='health-readiness'),
     path('admin/', admin.site.urls),
     path('api/auth/', include('accounts.urls')),
     path('api/', include('geo.urls')),
