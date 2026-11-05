@@ -215,6 +215,7 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': env("DRF_ANON_RATE", default="100/hour"),
         'user': env("DRF_USER_RATE", default="2000/hour"),
+        'password_reset': env("DRF_PASSWORD_RESET_RATE", default="5/hour"),
     },
 }
 

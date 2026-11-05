@@ -1,13 +1,22 @@
 from django.db.models import Q
+from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, serializers, status
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from .email import send_verification_email
 from .models import User
-from .serializers import RegisterSerializer, UserSearchResultSerializer, UserSerializer
+from .password_reset import send_password_reset_email
+from .serializers import (
+    PasswordResetConfirmSerializer,
+    PasswordResetRequestSerializer,
+    RegisterSerializer,
+    UserSearchResultSerializer,
+    UserSerializer,
+)
 from .tokens import email_verification_token
 
 
@@ -46,6 +55,64 @@ class VerifyEmailView(APIView):
         user.is_active = True
         user.save(update_fields=['email_verified', 'is_active'])
         return Response({'detail': 'Your email has been verified. You can now sign in.'})
+
+
+class PasswordResetRequestView(APIView):
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'password_reset'
+
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+        user = User.objects.filter(
+            email__iexact=email,
+            is_active=True,
+            email_verified=True,
+        ).first()
+        if user:
+            send_password_reset_email(user)
+        return Response({
+            'detail': 'If an account exists for that email, a password reset link has been sent.'
+        })
+
+
+class PasswordResetConfirmView(APIView):
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'password_reset'
+
+    def post(self, request):
+        uid = request.data.get('uid', '')
+        token = request.data.get('token', '')
+        try:
+            user_id = force_str(urlsafe_base64_decode(uid))
+            user = User.objects.get(pk=user_id)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            return Response(
+                {'detail': 'This password reset link is invalid or expired.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not default_token_generator.check_token(user, token):
+            return Response(
+                {'detail': 'This password reset link is invalid or expired.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = PasswordResetConfirmSerializer(
+            data=request.data,
+            context={'user': user},
+        )
+        try:
+            serializer.is_valid(raise_exception=True)
+        except serializers.ValidationError:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(serializer.validated_data['new_password'])
+        user.save(update_fields=['password'])
+        return Response({'detail': 'Your password has been reset. You can now sign in.'})
 
 
 class MeView(generics.RetrieveUpdateAPIView):

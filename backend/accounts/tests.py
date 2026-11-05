@@ -76,6 +76,67 @@ class RegistrationAndAuthTests(APITestCase):
         )
         self.assertEqual(replay_response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    @override_settings(
+        EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+        FRONTEND_BASE_URL='https://app.example.com',
+    )
+    def test_password_reset_sends_email_without_revealing_unknown_accounts(self):
+        user = User.objects.create_user(
+            username='reset-user',
+            email='reset@example.com',
+            password='OldStrongPass123!',
+        )
+        response = self.client.post(
+            reverse('password-reset'),
+            {'email': user.email},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('https://app.example.com/reset-password?', mail.outbox[0].body)
+
+        mail.outbox = []
+        response = self.client.post(
+            reverse('password-reset'),
+            {'email': 'nobody@example.com'},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 0)
+
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+    def test_password_reset_changes_password_and_invalidates_token(self):
+        user = User.objects.create_user(
+            username='reset-user',
+            email='reset@example.com',
+            password='OldStrongPass123!',
+        )
+        self.client.post(reverse('password-reset'), {'email': user.email})
+        body = mail.outbox[0].body
+        uid = body.split('uid=')[1].split('&', 1)[0]
+        token = body.split('token=', 1)[1].split()[0]
+
+        response = self.client.post(
+            reverse('password-reset-confirm'),
+            {'uid': uid, 'token': token, 'new_password': 'NewStrongPass123!'},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        old_login = self.client.post(
+            reverse('token_obtain_pair'),
+            {'username': user.username, 'password': 'OldStrongPass123!'},
+        )
+        self.assertEqual(old_login.status_code, status.HTTP_401_UNAUTHORIZED)
+        new_login = self.client.post(
+            reverse('token_obtain_pair'),
+            {'username': user.username, 'password': 'NewStrongPass123!'},
+        )
+        self.assertEqual(new_login.status_code, status.HTTP_200_OK)
+
+        replay = self.client.post(
+            reverse('password-reset-confirm'),
+            {'uid': uid, 'token': token, 'new_password': 'AnotherStrongPass123!'},
+        )
+        self.assertEqual(replay.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_obtain_token_and_fetch_me(self):
         User.objects.create_user(username='bob', email='bob@example.com', password='StrongPass123!')
 

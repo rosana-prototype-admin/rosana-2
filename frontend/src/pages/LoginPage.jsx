@@ -73,6 +73,10 @@ export default function LoginPage() {
           />
         </label>
 
+        <p className="auth-switch">
+          <Link to="/forgot-password">Forgot your password?</Link>
+        </p>
+
         <button type="submit" className="auth-submit" disabled={isSubmitting}>
           {isSubmitting ? 'Signing in…' : 'Sign in'}
         </button>

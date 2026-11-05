@@ -61,3 +61,5 @@ Account onboarding details:
 
 - `POST /api/auth/register/` creates an inactive account and sends a verification email.
 - `POST /api/auth/verify-email/` accepts the `uid` and `token` from that email and activates the account.
+- `POST /api/auth/password-reset/` requests a password reset email without revealing whether an account exists.
+- `POST /api/auth/password-reset/confirm/` accepts the reset `uid`, `token`, and `new_password`.
