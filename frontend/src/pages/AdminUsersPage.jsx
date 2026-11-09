@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import DataTable from '../components/DataTable'
 import {
   listAdminUsers,
@@ -126,11 +126,14 @@ export default function AdminUsersPage() {
 
   return (
     <main className="admin-users-page">
+      <nav className="admin-tabs" aria-label="Administration sections">
+        <NavLink to="/admin/users">User accounts</NavLink>
+        <NavLink to="/admin/subscriptions">Subscriptions</NavLink>
+      </nav>
       <div className="admin-users-header">
         <div>
           <h1>Account management</h1>
           <p>Review account status and lifecycle actions.</p>
-          <p><Link to="/admin/companies">Manage company subscriptions and seats</Link></p>
         </div>
         <div className="admin-users-filters">
           <input

@@ -1,3 +1,4 @@
+import { NavLink } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import {
   createAdminGroupContract,
@@ -35,7 +36,7 @@ export default function AdminGroupsPage() {
     listAdminGroups().then((data) => {
       setGroups(data)
       if (data.length) setSelectedId(data[0].id)
-    }).catch(() => setError('Unable to load companies.'))
+    }).catch(() => setError('Unable to load groups.'))
   }, [])
 
   const group = groups.find((item) => item.id === selectedId)
@@ -50,7 +51,7 @@ export default function AdminGroupsPage() {
       setSubscription(subscriptionData)
       setContracts(contractData)
       setSeats(seatData)
-    }).catch(() => setError('Unable to load company subscription records.'))
+    }).catch(() => setError('Unable to load subscription records.'))
     return undefined
   }, [group])
 
@@ -65,8 +66,8 @@ export default function AdminGroupsPage() {
         notes: form.get('notes'),
       })
       setSubscription(updated)
-      setMessage('Company subscription saved.')
-    } catch { setError('Unable to save the company subscription.') }
+      setMessage('Subscription saved.')
+    } catch { setError('Unable to save the subscription.') }
   }
 
   async function addSeat(event) {
@@ -95,17 +96,21 @@ export default function AdminGroupsPage() {
 
   return (
     <main className="admin-groups-page">
-      <div><h1>Company subscriptions</h1><p>Manage plans, contracts, and seats at the company level.</p></div>
+      <nav className="admin-tabs" aria-label="Administration sections">
+        <NavLink to="/admin/users">User accounts</NavLink>
+        <NavLink to="/admin/subscriptions">Subscriptions</NavLink>
+      </nav>
+      <div><h1>Subscriptions</h1><p>Manage subscriptions, contracts, and seats for top-level groups.</p></div>
       {error && <p className="form-error" role="alert">{error}</p>}
       {message && <p className="form-success" role="status">{message}</p>}
       <div className="admin-groups-layout">
         <div className="admin-company-list">
           {groups.map((item) => <button type="button" className={item.id === selectedId ? 'selected' : ''} key={item.id} onClick={() => { setSelectedId(item.id); setMessage(''); setError('') }}><strong>{item.name}</strong><span>{item.member_count} members</span></button>)}
-          {!groups.length && <p>No companies found.</p>}
+          {!groups.length && <p>No groups found.</p>}
         </div>
         {group && subscription && <section className="admin-company-detail">
           <h2>{group.name}</h2>
-          <p>Company administrator: {group.admin?.username}</p>
+          <p>Group administrator: {group.admin?.username}</p>
           <form onSubmit={saveSubscription}>
             <h3>Subscription</h3>
             <div className="admin-company-fields">

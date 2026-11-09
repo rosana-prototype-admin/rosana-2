@@ -52,7 +52,8 @@ function App() {
           <Route path="/settings" element={<SettingsPage />} />
           <Route element={<AdminRoute />}>
             <Route path="/admin/users" element={<AdminUsersPage />} />
-            <Route path="/admin/companies" element={<AdminGroupsPage />} />
+            <Route path="/admin/subscriptions" element={<AdminGroupsPage />} />
+            <Route path="/admin/companies" element={<Navigate to="/admin/subscriptions" replace />} />
           </Route>
           <Route path="/cmfs" element={<CustomCmfsPage />} />
           <Route path="/cmfs/new" element={<CustomCmfSetupPage key="new-cmf" />} />
