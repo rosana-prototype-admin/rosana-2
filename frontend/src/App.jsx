@@ -46,6 +46,7 @@ function App() {
             <Route path="analysis" element={<AnalysisSetupPage />} />
           </Route>
           <Route path="/groups" element={<GroupsPage />} />
+          <Route path="/groups/new" element={<GroupEditorPage />} />
           <Route path="/groups/:id" element={<GroupEditorPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/settings" element={<SettingsPage />} />

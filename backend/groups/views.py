@@ -54,9 +54,12 @@ class GroupViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='mine')
     def mine(self, request):
-        queryset = self.get_queryset().filter(
-            Q(admin_id=request.user.pk) | Q(memberships__user_id=request.user.pk),
-        ).distinct()
+        if request.user.is_staff and request.user.is_active:
+            queryset = self.get_queryset()
+        else:
+            queryset = self.get_queryset().filter(
+                Q(admin_id=request.user.pk) | Q(memberships__user_id=request.user.pk),
+            ).distinct()
         return Response(self.get_serializer(queryset, many=True).data)
 
     def perform_create(self, serializer):

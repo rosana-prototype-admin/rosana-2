@@ -39,6 +39,26 @@ class GroupCrudTests(GroupsTestCase):
             {'Admin group': 'admin', 'Member group': 'member'},
         )
 
+    def test_platform_admin_can_list_all_groups(self):
+        Group.objects.create(name='Admin group', admin=self.admin)
+        member_group = Group.objects.create(name='Member group', admin=self.other)
+        Membership.objects.create(user=self.admin, group=member_group)
+        Group.objects.create(name='Unrelated group', admin=self.other)
+        self.admin.is_staff = True
+        self.admin.save(update_fields=['is_staff'])
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get('/api/groups/mine/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual({group['name'] for group in response.data}, {'Admin group', 'Member group', 'Unrelated group'})
+
+    def test_platform_admin_can_delete_group(self):
+        group = Group.objects.create(name='Imported group', admin=self.other)
+        self.admin.is_staff = True
+        self.admin.save(update_fields=['is_staff'])
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.delete(f'/api/groups/{group.pk}/')
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
     def test_admin_can_replace_group_jcodes(self):
         group = Group.objects.create(name='Agency', admin=self.admin)
         first = Jcode.objects.create(id='0400100', state='Arizona', county='Maricopa', place_name_short='Phoenix', place_name_long='Phoenix city')

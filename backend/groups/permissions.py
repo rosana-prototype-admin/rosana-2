@@ -15,4 +15,4 @@ class GroupAccessPermission(BasePermission):
     def has_object_permission(self, request, view, obj):
         if request.method in SAFE_METHODS:
             return True
-        return is_admin(request.user, obj)
+        return request.user.is_staff and request.user.is_active or is_admin(request.user, obj)

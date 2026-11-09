@@ -73,7 +73,9 @@ export default function GroupEditorPage() {
   const [isCreatingSubgroup, setIsCreatingSubgroup] = useState(false)
   const [subgroupError, setSubgroupError] = useState('')
 
-  const canManage = group && user && group.admin?.id === user.id
+  const isNew = id === 'new'
+
+  const canManage = group && user && (group.admin?.id === user.id || user.is_staff)
 
   const loadMembers = useCallback(async () => {
     setIsLoadingMembers(true)
@@ -95,7 +97,19 @@ export default function GroupEditorPage() {
       setIsLoading(true)
       setLoadError('')
       try {
-        const [groupData, groupsData] = await Promise.all([getGroup(id), listGroups()])
+        const groupsData = await listGroups()
+        const groupData = isNew
+          ? {
+            id: null,
+            name: '',
+            parent: null,
+            admin: user,
+            members: [],
+            jcodes: [],
+            created_at: null,
+            modified_at: null,
+          }
+          : await getGroup(id)
         if (cancelled) return
 
         setGroup(groupData)
@@ -120,18 +134,18 @@ export default function GroupEditorPage() {
     return () => {
       cancelled = true
     }
-  }, [id])
+  }, [id, isNew, user])
 
   useEffect(() => {
     let cancelled = false
     async function run() {
-      if (!cancelled) await loadMembers()
+      if (!cancelled && !isNew) await loadMembers()
     }
     run()
     return () => {
       cancelled = true
     }
-  }, [loadMembers])
+  }, [isNew, loadMembers])
 
   const excludedIds = useMemo(() => collectExcludedIds(allGroups, group?.id), [allGroups, group])
   const parentOptions = useMemo(
@@ -163,10 +177,15 @@ export default function GroupEditorPage() {
 
     setIsSaving(true)
     try {
-      const updated = await updateGroup(id, {
+      const payload = {
         name: name.trim(),
         parent: parent === '' ? null : Number(parent),
-      })
+      }
+      const updated = isNew ? await createGroup(payload) : await updateGroup(id, payload)
+      if (isNew) {
+        navigate(`/groups/${updated.id}`, { replace: true })
+        return
+      }
       setGroup((prev) => ({ ...prev, ...updated }))
       setBaseline({ name: updated.name, parent: updated.parent })
       setSavedAt(new Date())
@@ -312,8 +331,8 @@ export default function GroupEditorPage() {
 
       <form className="editor-card" onSubmit={handleSave}>
         <div className="editor-title-row">
-          <h1>Group Editor</h1>
-          {!canManage && <span className="editor-readonly-badge">Read-only</span>}
+          <h1>{isNew ? 'New Group' : 'Group Editor'}</h1>
+          {!isNew && !canManage && <span className="editor-readonly-badge">Read-only</span>}
         </div>
 
         {saveError && (
@@ -368,7 +387,7 @@ export default function GroupEditorPage() {
         )}
       </form>
 
-      <section className="editor-section">
+      {!isNew && <section className="editor-section">
         <div className="editor-section-header">
           <h2>Members</h2>
         </div>
@@ -434,9 +453,9 @@ export default function GroupEditorPage() {
             emptyMessage="No members yet."
           />
         )}
-      </section>
+      </section>}
 
-      <section className="editor-section">
+      {!isNew && <section className="editor-section">
         <div className="editor-section-header">
           <h2>Subgroups</h2>
         </div>
@@ -466,9 +485,9 @@ export default function GroupEditorPage() {
           onSelectRow={setSelectedSubgroupId}
           emptyMessage="No subgroups yet."
         />
-      </section>
+      </section>}
 
-      <GroupMemberDialog
+      {!isNew && <GroupMemberDialog
         isOpen={isMemberDialogOpen}
         mode={memberDialogMode}
         memberLabel={selectedMember ? memberLabel(selectedMember) : ''}
@@ -477,9 +496,9 @@ export default function GroupEditorPage() {
         error={memberDialogError}
         onSubmit={handleSubmitMemberDialog}
         onCancel={() => setIsMemberDialogOpen(false)}
-      />
+      />}
 
-      <ConfirmDialog
+      {!isNew && <ConfirmDialog
         isOpen={isRemoveMemberDialogOpen}
         title="Remove member?"
         message={`This will remove ${
@@ -490,7 +509,7 @@ export default function GroupEditorPage() {
         isBusy={isRemovingMember}
         onConfirm={handleConfirmRemoveMember}
         onCancel={() => setIsRemoveMemberDialogOpen(false)}
-      />
+      />}
     </main>
   )
 }

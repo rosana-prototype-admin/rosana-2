@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { createGroup, deleteGroup, listGroupMembers, listMyGroups, updateGroupJcodes } from '../api/groups'
+import { deleteGroup, listGroupMembers, listMyGroups, updateGroupJcodes } from '../api/groups'
 import { listJcodes } from '../api/jcodes'
 import ConfirmDialog from '../components/ConfirmDialog'
 import DataTable from '../components/DataTable'
 import JcodeSelectionTable from '../components/JcodeSelectionTable'
+import { useAuth } from '../hooks/useAuth'
 import '../styles/formFeedback.css'
 import '../styles/actionToolbar.css'
 import './GroupsPage.css'
@@ -19,6 +20,7 @@ function toggleId(ids, id) {
 
 export default function GroupsPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [groups, setGroups] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -64,7 +66,7 @@ export default function GroupsPage() {
   }, [loadGroups])
 
   const selectedGroup = groups.find((group) => group.id === selectedId) || null
-  const isSelectedGroupAdmin = selectedGroup?.user_role === 'admin'
+  const isSelectedGroupAdmin = selectedGroup?.user_role === 'admin' || user?.is_staff
   const assignedJcodes = useMemo(() => selectedGroup?.jcodes || [], [selectedGroup])
 
   useEffect(() => {
@@ -130,14 +132,8 @@ export default function GroupsPage() {
   async function handleNew() {
     setError('')
     setIsCreating(true)
-    try {
-      const group = await createGroup({ name: 'Untitled Group', parent: null })
-      navigate(`/groups/${group.id}`)
-    } catch {
-      setError('Unable to create a new group. Please try again.')
-    } finally {
-      setIsCreating(false)
-    }
+    navigate('/groups/new')
+    setIsCreating(false)
   }
 
   async function handleConfirmDelete() {
