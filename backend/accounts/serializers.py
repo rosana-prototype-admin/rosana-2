@@ -1,7 +1,9 @@
 from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from rest_framework import serializers
 
 from .models import User
+from .staff import validate_staff_account_change
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -90,6 +92,15 @@ class AdminUserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'is_active': 'You cannot deactivate your own account.'})
         if attrs.get('is_active') is True and attrs.get('email_verified', instance.email_verified if instance else False) is False:
             raise serializers.ValidationError({'email_verified': 'An active account must have a verified email.'})
+        try:
+            if instance:
+                validate_staff_account_change(
+                    instance,
+                    is_active=attrs.get('is_active'),
+                    is_staff=attrs.get('is_staff'),
+                )
+        except ValidationError as exc:
+            raise serializers.ValidationError({'is_active': exc.messages}) from exc
         return attrs
 
 

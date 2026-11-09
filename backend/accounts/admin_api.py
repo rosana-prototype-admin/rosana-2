@@ -1,13 +1,14 @@
 from django.db.models import Q
-from rest_framework import generics, permissions
+from rest_framework import generics
 
 from .models import User
+from .permissions import IsPlatformAdmin
 from .serializers import AdminUserSerializer
 
 
 class AdminUserListView(generics.ListAPIView):
     serializer_class = AdminUserSerializer
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [IsPlatformAdmin]
 
     def get_queryset(self):
         queryset = User.objects.all().order_by('-date_joined', 'username')
@@ -36,4 +37,4 @@ class AdminUserListView(generics.ListAPIView):
 class AdminUserDetailView(generics.RetrieveUpdateAPIView):
     queryset = User.objects.all()
     serializer_class = AdminUserSerializer
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [IsPlatformAdmin]

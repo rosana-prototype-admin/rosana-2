@@ -1,5 +1,6 @@
 from django.urls import reverse
 from django.core import mail
+from django.core.exceptions import ValidationError
 from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -8,6 +9,7 @@ from geo.models import Jcode
 from groups.models import Group
 
 from .models import User
+from .staff import validate_staff_account_change
 
 
 class RegistrationAndAuthTests(APITestCase):
@@ -331,3 +333,28 @@ class AdminUserManagementTests(APITestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_last_active_staff_user_cannot_be_deactivated(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(
+            reverse('admin-user-detail', args=[self.user.pk]),
+            {'is_active': False},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.admin.refresh_from_db()
+        with self.assertRaises(ValidationError):
+            validate_staff_account_change(self.admin, is_active=False)
+
+    def test_another_active_staff_user_can_be_deactivated(self):
+        second_admin = User.objects.create_user(
+            username='second-admin', email='second-admin@example.com', password='pw', is_staff=True,
+        )
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(
+            reverse('admin-user-detail', args=[second_admin.pk]),
+            {'is_active': False},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
