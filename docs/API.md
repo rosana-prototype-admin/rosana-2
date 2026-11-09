@@ -68,5 +68,7 @@ Platform administration details:
 
 - `GET /api/auth/admin/users/` lists users for platform staff, with optional `q`, `is_active`, `email_verified`, and `subscription_type` filters.
 - `GET/PATCH /api/auth/admin/users/<id>/` reads or updates account status and subscription assignment for platform staff.
+- `POST /api/auth/admin/users/<id>/resend-verification/` resends verification mail for an unverified account.
+- `POST /api/auth/admin/users/<id>/send-password-reset/` sends a password-reset email for an active, verified account.
 - These endpoints require a Django `is_staff` user. The `subscription_type` value does not grant administrative access.
 - Administrative requests also require the staff user to be active, and the last active platform administrator cannot be disabled or demoted.

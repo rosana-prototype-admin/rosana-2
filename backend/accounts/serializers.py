@@ -73,6 +73,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
             'id',
             'username',
             'email',
+            'secondary_email',
             'first_name',
             'last_name',
             'company',

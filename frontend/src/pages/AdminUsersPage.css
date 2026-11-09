@@ -92,6 +92,21 @@
   color: var(--text-h);
 }
 
+.admin-user-fields input {
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.admin-user-fields input:focus {
+  outline: none;
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
 .admin-user-save {
   align-self: flex-start;
   padding: 9px 14px;
@@ -106,6 +121,27 @@
 
 .admin-user-save:disabled {
   opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.admin-user-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-user-actions button {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-h);
+  font: inherit;
+  cursor: pointer;
+}
+
+.admin-user-actions button:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 

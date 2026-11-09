@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import DataTable from '../components/DataTable'
-import { listAdminUsers, updateAdminUser } from '../api/admin'
+import {
+  listAdminUsers,
+  resendAdminVerification,
+  sendAdminPasswordReset,
+  updateAdminUser,
+} from '../api/admin'
 import '../styles/formFeedback.css'
 import './AdminUsersPage.css'
 
@@ -37,6 +42,7 @@ export default function AdminUsersPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [busyAction, setBusyAction] = useState('')
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
 
@@ -92,6 +98,10 @@ export default function AdminUsersPage() {
         is_active: formData.get('is_active') === 'true',
         email_verified: formData.get('email_verified') === 'true',
         subscription_type: formData.get('subscription_type'),
+        first_name: formData.get('first_name'),
+        last_name: formData.get('last_name'),
+        company: formData.get('company'),
+        secondary_email: formData.get('secondary_email'),
       })
       setUsers((current) => current.map((user) => (user.id === updated.id ? updated : user)))
       setSaved(true)
@@ -100,6 +110,23 @@ export default function AdminUsersPage() {
       setError(data?.is_active?.[0] || data?.email_verified?.[0] || 'Unable to update this account.')
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  async function handleLifecycleAction(action) {
+    if (!selectedUser) return
+    setError('')
+    setSaved(false)
+    setBusyAction(action)
+    try {
+      const response = action === 'verification'
+        ? await resendAdminVerification(selectedUser.id)
+        : await sendAdminPasswordReset(selectedUser.id)
+      setSaved(response.detail)
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Unable to complete this account action.')
+    } finally {
+      setBusyAction('')
     }
   }
 
@@ -136,7 +163,7 @@ export default function AdminUsersPage() {
       </div>
 
       {error && <p className="form-error" role="alert">{error}</p>}
-      {saved && <p className="form-success" role="status">Account updated.</p>}
+      {saved && <p className="form-success" role="status">{typeof saved === 'string' ? saved : 'Account updated.'}</p>}
 
       {isLoading ? (
         <p className="text-sm">Loading accounts...</p>
@@ -161,6 +188,22 @@ export default function AdminUsersPage() {
           </dl>
           <div className="admin-user-fields">
             <label>
+              <span>First name</span>
+              <input name="first_name" type="text" defaultValue={selectedUser.first_name || ''} disabled={isSaving} />
+            </label>
+            <label>
+              <span>Last name</span>
+              <input name="last_name" type="text" defaultValue={selectedUser.last_name || ''} disabled={isSaving} />
+            </label>
+            <label>
+              <span>Company</span>
+              <input name="company" type="text" defaultValue={selectedUser.company || ''} disabled={isSaving} />
+            </label>
+            <label>
+              <span>Secondary email</span>
+              <input name="secondary_email" type="email" defaultValue={selectedUser.secondary_email || ''} disabled={isSaving} />
+            </label>
+            <label>
               <span>Account status</span>
               <select name="is_active" defaultValue={String(selectedUser.is_active)} disabled={isSaving}>
                 <option value="true">Active</option>
@@ -184,6 +227,22 @@ export default function AdminUsersPage() {
           <button type="submit" className="admin-user-save" disabled={isSaving}>
             {isSaving ? 'Saving...' : 'Save account changes'}
           </button>
+          <div className="admin-user-actions">
+            <button
+              type="button"
+              onClick={() => handleLifecycleAction('verification')}
+              disabled={isSaving || Boolean(busyAction) || selectedUser.email_verified}
+            >
+              {busyAction === 'verification' ? 'Sending...' : 'Resend verification email'}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleLifecycleAction('password')}
+              disabled={isSaving || Boolean(busyAction) || !selectedUser.is_active || !selectedUser.email_verified}
+            >
+              {busyAction === 'password' ? 'Sending...' : 'Send password reset email'}
+            </button>
+          </div>
         </form>
       )}
     </main>

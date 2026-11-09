@@ -13,7 +13,12 @@ from .views import (
     UserSearchView,
     VerifyEmailView,
 )
-from .admin_api import AdminUserDetailView, AdminUserListView
+from .admin_api import (
+    AdminResendVerificationView,
+    AdminSendPasswordResetView,
+    AdminUserDetailView,
+    AdminUserListView,
+)
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
@@ -22,6 +27,8 @@ urlpatterns = [
     path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
     path('admin/users/', AdminUserListView.as_view(), name='admin-user-list'),
     path('admin/users/<int:pk>/', AdminUserDetailView.as_view(), name='admin-user-detail'),
+    path('admin/users/<int:pk>/resend-verification/', AdminResendVerificationView.as_view(), name='admin-resend-verification'),
+    path('admin/users/<int:pk>/send-password-reset/', AdminSendPasswordResetView.as_view(), name='admin-send-password-reset'),
     path('me/', MeView.as_view(), name='me'),
     path('users/', UserSearchView.as_view(), name='user-search'),
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),

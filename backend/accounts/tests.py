@@ -358,3 +358,44 @@ class AdminUserManagementTests(APITestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+    def test_admin_can_resend_verification_email(self):
+        self.user.email_verified = False
+        self.user.is_active = False
+        self.user.save(update_fields=['email_verified', 'is_active'])
+        self.client.force_authenticate(user=self.admin)
+
+        response = self.client.post(
+            reverse('admin-resend-verification', args=[self.user.pk]),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('/verify-email?', mail.outbox[0].body)
+
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+    def test_admin_can_send_password_reset_email(self):
+        self.client.force_authenticate(user=self.admin)
+
+        response = self.client.post(
+            reverse('admin-send-password-reset', args=[self.user.pk]),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('/reset-password?', mail.outbox[0].body)
+
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+    def test_admin_lifecycle_actions_reject_ineligible_accounts(self):
+        self.client.force_authenticate(user=self.admin)
+
+        response = self.client.post(
+            reverse('admin-resend-verification', args=[self.user.pk]),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.user.email_verified = False
+        self.user.save(update_fields=['email_verified'])
+        response = self.client.post(
+            reverse('admin-send-password-reset', args=[self.user.pk]),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
