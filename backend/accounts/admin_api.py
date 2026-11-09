@@ -5,10 +5,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .email import send_verification_email
-from .models import User
+from .models import Contract, User, UserSubscription
 from .password_reset import send_password_reset_email
 from .permissions import IsPlatformAdmin
-from .serializers import AdminUserSerializer
+from .serializers import AdminContractSerializer, AdminSubscriptionSerializer, AdminUserSerializer
 
 
 class AdminUserListView(generics.ListAPIView):
@@ -71,3 +71,46 @@ class AdminSendPasswordResetView(APIView):
             )
         send_password_reset_email(user)
         return Response({'detail': 'A password reset email has been sent.'})
+
+
+class AdminSubscriptionView(generics.RetrieveUpdateAPIView):
+    serializer_class = AdminSubscriptionSerializer
+    permission_classes = [IsPlatformAdmin]
+
+    def get_object(self):
+        user = get_object_or_404(User, pk=self.kwargs['pk'])
+        subscription = user.subscriptions.order_by('-starts_at', '-created_at').first()
+        if subscription is None:
+            from django.utils import timezone
+            subscription = UserSubscription.objects.create(
+                user=user,
+                plan_code=user.subscription_type,
+                starts_at=timezone.now(),
+            )
+        return subscription
+
+    def perform_update(self, serializer):
+        subscription = serializer.save()
+        subscription.user.subscription_type = subscription.plan_code
+        subscription.user.save(update_fields=['subscription_type'])
+
+
+class AdminContractListCreateView(generics.ListCreateAPIView):
+    serializer_class = AdminContractSerializer
+    permission_classes = [IsPlatformAdmin]
+
+    def get_queryset(self):
+        return Contract.objects.filter(user_id=self.kwargs['pk'])
+
+    def perform_create(self, serializer):
+        user = get_object_or_404(User, pk=self.kwargs['pk'])
+        serializer.save(user=user)
+
+
+class AdminContractDetailView(generics.RetrieveUpdateAPIView):
+    serializer_class = AdminContractSerializer
+    permission_classes = [IsPlatformAdmin]
+    lookup_url_kwarg = 'contract_pk'
+
+    def get_queryset(self):
+        return Contract.objects.filter(user_id=self.kwargs['pk'])

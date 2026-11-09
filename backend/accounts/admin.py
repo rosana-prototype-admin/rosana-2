@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
-from .models import User
+from .models import Contract, User, UserSubscription
 from .staff import validate_staff_account_change
 
 
@@ -43,3 +43,17 @@ class UserAdmin(DjangoUserAdmin):
             except User.DoesNotExist:
                 pass
         super().save_model(request, obj, form, change)
+
+
+@admin.register(UserSubscription)
+class UserSubscriptionAdmin(admin.ModelAdmin):
+    list_display = ('user', 'plan_code', 'status', 'starts_at', 'ends_at')
+    list_filter = ('plan_code', 'status')
+    search_fields = ('user__username', 'user__email', 'external_reference')
+
+
+@admin.register(Contract)
+class ContractAdmin(admin.ModelAdmin):
+    list_display = ('title', 'user', 'status', 'starts_at', 'ends_at')
+    list_filter = ('status',)
+    search_fields = ('title', 'user__username', 'user__email', 'external_reference')

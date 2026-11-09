@@ -2,7 +2,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
 
-from .models import User
+from .models import Contract, User, UserSubscription
 from .staff import validate_staff_account_change
 
 
@@ -103,6 +103,26 @@ class AdminUserSerializer(serializers.ModelSerializer):
         except ValidationError as exc:
             raise serializers.ValidationError({'is_active': exc.messages}) from exc
         return attrs
+
+
+class AdminSubscriptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserSubscription
+        fields = [
+            'id', 'plan_code', 'status', 'starts_at', 'ends_at',
+            'external_reference', 'notes', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class AdminContractSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Contract
+        fields = [
+            'id', 'title', 'status', 'starts_at', 'ends_at',
+            'external_reference', 'notes', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):

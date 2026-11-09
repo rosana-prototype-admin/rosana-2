@@ -18,6 +18,23 @@ class SubscriptionType(models.TextChoices):
     REPUBLIC = 'republic', 'Republic'
 
 
+class SubscriptionStatus(models.TextChoices):
+    TRIALING = 'trialing', 'Trialing'
+    ACTIVE = 'active', 'Active'
+    PAUSED = 'paused', 'Paused'
+    PAST_DUE = 'past_due', 'Past due'
+    CANCELED = 'canceled', 'Canceled'
+    EXPIRED = 'expired', 'Expired'
+
+
+class ContractStatus(models.TextChoices):
+    DRAFT = 'draft', 'Draft'
+    PENDING = 'pending', 'Pending'
+    ACTIVE = 'active', 'Active'
+    EXPIRED = 'expired', 'Expired'
+    TERMINATED = 'terminated', 'Terminated'
+
+
 class Language(models.TextChoices):
     EN_AU = 'en-AU', 'English (Australia)'
     EN_CA = 'en-CA', 'English (Canada)'
@@ -93,3 +110,43 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username
+
+
+class UserSubscription(models.Model):
+    """A dated subscription assignment, separate from the legacy user label."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subscriptions')
+    plan_code = models.CharField(max_length=20, choices=SubscriptionType.choices)
+    status = models.CharField(max_length=20, choices=SubscriptionStatus.choices, default=SubscriptionStatus.ACTIVE)
+    starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField(blank=True, null=True)
+    external_reference = models.CharField(max_length=255, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-starts_at', '-created_at']
+
+    def __str__(self):
+        return f'{self.user.username}: {self.plan_code} ({self.status})'
+
+
+class Contract(models.Model):
+    """A lightweight contract record pending finalized legal/billing requirements."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='contracts')
+    title = models.CharField(max_length=255)
+    status = models.CharField(max_length=20, choices=ContractStatus.choices, default=ContractStatus.DRAFT)
+    starts_at = models.DateTimeField(blank=True, null=True)
+    ends_at = models.DateTimeField(blank=True, null=True)
+    external_reference = models.CharField(max_length=255, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user.username}: {self.title}'

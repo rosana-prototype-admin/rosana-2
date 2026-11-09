@@ -16,6 +16,9 @@ from .views import (
 from .admin_api import (
     AdminResendVerificationView,
     AdminSendPasswordResetView,
+    AdminSubscriptionView,
+    AdminContractListCreateView,
+    AdminContractDetailView,
     AdminUserDetailView,
     AdminUserListView,
 )
@@ -29,6 +32,9 @@ urlpatterns = [
     path('admin/users/<int:pk>/', AdminUserDetailView.as_view(), name='admin-user-detail'),
     path('admin/users/<int:pk>/resend-verification/', AdminResendVerificationView.as_view(), name='admin-resend-verification'),
     path('admin/users/<int:pk>/send-password-reset/', AdminSendPasswordResetView.as_view(), name='admin-send-password-reset'),
+    path('admin/users/<int:pk>/subscription/', AdminSubscriptionView.as_view(), name='admin-subscription'),
+    path('admin/users/<int:pk>/contracts/', AdminContractListCreateView.as_view(), name='admin-contract-list'),
+    path('admin/users/<int:pk>/contracts/<int:contract_pk>/', AdminContractDetailView.as_view(), name='admin-contract-detail'),
     path('me/', MeView.as_view(), name='me'),
     path('users/', UserSearchView.as_view(), name='user-search'),
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),

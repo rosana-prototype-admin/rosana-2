@@ -70,5 +70,8 @@ Platform administration details:
 - `GET/PATCH /api/auth/admin/users/<id>/` reads or updates account status and subscription assignment for platform staff.
 - `POST /api/auth/admin/users/<id>/resend-verification/` resends verification mail for an unverified account.
 - `POST /api/auth/admin/users/<id>/send-password-reset/` sends a password-reset email for an active, verified account.
+- `GET/PATCH /api/auth/admin/users/<id>/subscription/` reads or updates the user's dated subscription record.
+- `GET/POST /api/auth/admin/users/<id>/contracts/` lists or creates contract records for a user.
+- `GET/PATCH /api/auth/admin/users/<id>/contracts/<contract-id>/` reads or updates one contract record.
 - These endpoints require a Django `is_staff` user. The `subscription_type` value does not grant administrative access.
 - Administrative requests also require the staff user to be active, and the last active platform administrator cannot be disabled or demoted.
