@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import AppLayout from './components/AppLayout'
 import ProtectedRoute from './components/ProtectedRoute'
+import AdminRoute from './components/AdminRoute'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
@@ -19,6 +20,7 @@ import NotificationsPage from './pages/NotificationsPage'
 import CustomCmfSetupPage from './pages/CustomCmfSetupPage'
 import CustomCmfsPage from './pages/CustomCmfsPage'
 import SettingsPage from './pages/SettingsPage'
+import AdminUsersPage from './pages/AdminUsersPage'
 
 function App() {
   return (
@@ -46,6 +48,9 @@ function App() {
           <Route path="/groups/:id" element={<GroupEditorPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route element={<AdminRoute />}>
+            <Route path="/admin/users" element={<AdminUsersPage />} />
+          </Route>
           <Route path="/cmfs" element={<CustomCmfsPage />} />
           <Route path="/cmfs/new" element={<CustomCmfSetupPage key="new-cmf" />} />
           <Route path="/cmfs/:id/edit" element={<CustomCmfSetupPage key="edit-cmf" />} />

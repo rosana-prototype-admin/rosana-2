@@ -283,3 +283,51 @@ class UserSearchTests(APITestCase):
         response = self.client.get(reverse('user-search'), {'jcode': 'US9999999999'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, [])
+
+
+class AdminUserManagementTests(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            username='platform-admin', email='admin@example.com', password='pw', is_staff=True,
+        )
+        self.user = User.objects.create_user(
+            username='managed-user', email='user@example.com', password='pw',
+        )
+
+    def test_admin_user_list_requires_staff(self):
+        response = self.client.get(reverse('admin-user-list'))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(reverse('admin-user-list'))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_staff_can_list_and_filter_users(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get(reverse('admin-user-list'), {'q': 'managed'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['username'], 'managed-user')
+        self.assertIn('is_staff', response.data[0])
+
+    def test_staff_can_update_account_status_and_subscription(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(
+            reverse('admin-user-detail', args=[self.user.pk]),
+            {'is_active': False, 'email_verified': False, 'subscription_type': 'basic'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_active)
+        self.assertFalse(self.user.email_verified)
+        self.assertEqual(self.user.subscription_type, 'basic')
+
+    def test_staff_cannot_deactivate_themselves(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(
+            reverse('admin-user-detail', args=[self.admin.pk]),
+            {'is_active': False},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

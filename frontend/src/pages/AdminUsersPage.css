@@ -1,0 +1,123 @@
+.admin-users-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 32px;
+  text-align: left;
+}
+
+.admin-users-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.admin-users-header h1,
+.admin-user-detail h2 {
+  margin: 0;
+  color: var(--text-h);
+}
+
+.admin-users-header p {
+  margin: 8px 0 0;
+  color: var(--text);
+}
+
+.admin-users-filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-users-filters input,
+.admin-users-filters select,
+.admin-user-fields select {
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.admin-users-filters input:focus,
+.admin-users-filters select:focus,
+.admin-user-fields select:focus {
+  outline: none;
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.admin-user-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  box-shadow: var(--shadow);
+}
+
+.admin-user-meta {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+  margin: 0;
+}
+
+.admin-user-meta dt {
+  color: var(--text);
+  font-size: var(--text-sm);
+}
+
+.admin-user-meta dd {
+  margin: 4px 0 0;
+  color: var(--text-h);
+}
+
+.admin-user-fields {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.admin-user-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--text-h);
+}
+
+.admin-user-save {
+  align-self: flex-start;
+  padding: 9px 14px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+}
+
+.admin-user-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 800px) {
+  .admin-users-page {
+    padding: 20px 16px;
+  }
+
+  .admin-users-filters,
+  .admin-users-filters input,
+  .admin-users-filters select {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}

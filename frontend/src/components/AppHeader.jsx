@@ -51,6 +51,7 @@ export default function AppHeader() {
         <Link to="/opportunities">Opportunities</Link>
         <Link to="/groups">Groups</Link>
         <Link to="/cmfs">Custom CMFs</Link>
+        {user?.is_staff && <Link to="/admin/users">Admin</Link>}
         <Link to="/notifications" className="app-header-notifications">
           Notifications
           {pendingCount > 0 && <span className="notification-badge">{pendingCount}</span>}

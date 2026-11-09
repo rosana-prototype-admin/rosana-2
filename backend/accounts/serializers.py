@@ -37,6 +37,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'username',
+            'is_staff',
             'email',
             'secondary_email',
             'first_name',
@@ -52,7 +53,7 @@ class UserSerializer(serializers.ModelSerializer):
             'area_large_unit',
             'volume_unit',
         ]
-        read_only_fields = ['id', 'username', 'subscription_type']
+        read_only_fields = ['id', 'username', 'is_staff', 'subscription_type']
 
 
 class UserSearchResultSerializer(serializers.ModelSerializer):
@@ -61,6 +62,35 @@ class UserSearchResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'first_name', 'last_name', 'email']
+
+
+class AdminUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            'id',
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'company',
+            'email_verified',
+            'is_active',
+            'is_staff',
+            'subscription_type',
+            'date_joined',
+            'last_login',
+        ]
+        read_only_fields = ['id', 'username', 'email', 'is_staff', 'date_joined', 'last_login']
+
+    def validate(self, attrs):
+        instance = self.instance
+        request = self.context.get('request')
+        if instance and request and instance.pk == request.user.pk and attrs.get('is_active') is False:
+            raise serializers.ValidationError({'is_active': 'You cannot deactivate your own account.'})
+        if attrs.get('is_active') is True and attrs.get('email_verified', instance.email_verified if instance else False) is False:
+            raise serializers.ValidationError({'email_verified': 'An active account must have a verified email.'})
+        return attrs
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):

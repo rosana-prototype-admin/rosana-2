@@ -63,3 +63,9 @@ Account onboarding details:
 - `POST /api/auth/verify-email/` accepts the `uid` and `token` from that email and activates the account.
 - `POST /api/auth/password-reset/` requests a password reset email without revealing whether an account exists.
 - `POST /api/auth/password-reset/confirm/` accepts the reset `uid`, `token`, and `new_password`.
+
+Platform administration details:
+
+- `GET /api/auth/admin/users/` lists users for platform staff, with optional `q`, `is_active`, `email_verified`, and `subscription_type` filters.
+- `GET/PATCH /api/auth/admin/users/<id>/` reads or updates account status and subscription assignment for platform staff.
+- These endpoints require a Django `is_staff` user. The `subscription_type` value does not grant administrative access.
