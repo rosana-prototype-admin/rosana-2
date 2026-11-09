@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
-from .models import Contract, SubscriptionSeat, User, UserSubscription
+from .models import AuditEvent, Contract, SubscriptionSeat, User, UserSubscription
 from .staff import validate_staff_account_change
 
 
@@ -64,3 +64,11 @@ class SubscriptionSeatAdmin(admin.ModelAdmin):
     list_display = ('subscription', 'user', 'assigned_at', 'released_at')
     list_filter = ('released_at',)
     search_fields = ('subscription__group__name', 'user__username', 'user__email')
+
+
+@admin.register(AuditEvent)
+class AuditEventAdmin(admin.ModelAdmin):
+    list_display = ('created_at', 'action', 'entity_type', 'entity_id', 'actor', 'group')
+    list_filter = ('action', 'entity_type')
+    search_fields = ('entity_id', 'actor__username', 'group__name')
+    readonly_fields = [field.name for field in AuditEvent._meta.fields]

@@ -22,6 +22,7 @@ import CustomCmfsPage from './pages/CustomCmfsPage'
 import SettingsPage from './pages/SettingsPage'
 import AdminUsersPage from './pages/AdminUsersPage'
 import AdminGroupsPage from './pages/AdminGroupsPage'
+import AdminAuditPage from './pages/AdminAuditPage'
 
 function App() {
   return (
@@ -53,6 +54,7 @@ function App() {
           <Route element={<AdminRoute />}>
             <Route path="/admin/users" element={<AdminUsersPage />} />
             <Route path="/admin/subscriptions" element={<AdminGroupsPage />} />
+            <Route path="/admin/audit" element={<AdminAuditPage />} />
             <Route path="/admin/companies" element={<Navigate to="/admin/subscriptions" replace />} />
           </Route>
           <Route path="/cmfs" element={<CustomCmfsPage />} />

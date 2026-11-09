@@ -169,3 +169,23 @@ class SubscriptionSeat(models.Model):
 
     def __str__(self):
         return f'{self.subscription.group.name}: {self.user.username}'
+
+
+class AuditEvent(models.Model):
+    """Immutable record of a privileged administrative action."""
+
+    actor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='audit_events')
+    action = models.CharField(max_length=100)
+    entity_type = models.CharField(max_length=100)
+    entity_id = models.CharField(max_length=100)
+    group = models.ForeignKey('groups.Group', on_delete=models.SET_NULL, null=True, blank=True, related_name='audit_events')
+    before = models.JSONField(default=dict, blank=True)
+    after = models.JSONField(default=dict, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
+
+    def __str__(self):
+        return f'{self.action} {self.entity_type} {self.entity_id}'

@@ -1,0 +1,9 @@
+.admin-audit-page { flex: 1; padding: 32px; display: flex; flex-direction: column; gap: 16px; text-align: left; }
+.admin-audit-page h1 { margin: 0; color: var(--text-h); }
+.admin-audit-page p { color: var(--text); }
+.admin-audit-list { display: flex; flex-direction: column; gap: 10px; }
+.admin-audit-event { padding: 14px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
+.admin-audit-event > div { display: flex; justify-content: space-between; gap: 16px; }
+.admin-audit-event span { color: var(--text); font-size: var(--text-sm); }
+.admin-audit-event p { margin: 8px 0 0; }
+.admin-audit-event pre { overflow: auto; padding: 12px; background: var(--bg-subtle); color: var(--text); }

@@ -99,6 +99,7 @@ export default function AdminGroupsPage() {
       <nav className="admin-tabs" aria-label="Administration sections">
         <NavLink to="/admin/users">User accounts</NavLink>
         <NavLink to="/admin/subscriptions">Subscriptions</NavLink>
+        <NavLink to="/admin/audit">Audit log</NavLink>
       </nav>
       <div><h1>Subscriptions</h1><p>Manage subscriptions, contracts, and seats for top-level groups.</p></div>
       {error && <p className="form-error" role="alert">{error}</p>}

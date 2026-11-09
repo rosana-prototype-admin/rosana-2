@@ -8,7 +8,7 @@ from rest_framework.test import APITestCase
 from geo.models import Jcode
 from groups.models import Group, Membership
 
-from .models import Contract, User, UserSubscription
+from .models import AuditEvent, Contract, User, UserSubscription
 from .staff import validate_staff_account_change
 
 
@@ -325,6 +325,7 @@ class AdminUserManagementTests(APITestCase):
         self.assertFalse(self.user.is_active)
         self.assertFalse(self.user.email_verified)
         self.assertEqual(self.user.subscription_type, 'none')
+        self.assertTrue(AuditEvent.objects.filter(action='user.updated', entity_id=str(self.user.pk)).exists())
 
     def test_staff_cannot_deactivate_themselves(self):
         self.client.force_authenticate(user=self.admin)
@@ -416,6 +417,9 @@ class AdminUserManagementTests(APITestCase):
         self.assertEqual(response.data['status'], 'trialing')
         self.assertEqual(response.data['seat_limit'], 5)
         self.assertEqual(UserSubscription.objects.filter(group=self.company).count(), 1)
+        event = AuditEvent.objects.get(action='subscription.updated')
+        self.assertEqual(event.group_id, self.company.pk)
+        self.assertEqual(event.after['seat_limit'], 5)
 
     def test_admin_can_create_and_update_company_contract(self):
         self.client.force_authenticate(user=self.admin)
@@ -435,6 +439,7 @@ class AdminUserManagementTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['status'], 'active')
+        self.assertTrue(AuditEvent.objects.filter(action='contract.created', entity_id=str(contract_id)).exists())
 
     def test_non_staff_cannot_manage_subscription_or_contracts(self):
         self.client.force_authenticate(user=self.user)
@@ -461,3 +466,4 @@ class AdminUserManagementTests(APITestCase):
             {'user_id': self.admin.pk}, format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(AuditEvent.objects.filter(action='seat.assigned').exists())

@@ -54,3 +54,8 @@ export async function assignAdminGroupSeat(groupId, userId) {
   const { data } = await client.post(`/auth/admin/groups/${groupId}/seats/`, { user_id: userId })
   return data
 }
+
+export async function listAdminAuditEvents(params = {}) {
+  const { data } = await client.get('/auth/admin/audit/', { params })
+  return data
+}

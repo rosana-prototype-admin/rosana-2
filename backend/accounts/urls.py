@@ -22,6 +22,7 @@ from .admin_api import (
     AdminGroupContractDetailView,
     AdminGroupSeatListCreateView,
     AdminGroupSeatDetailView,
+    AdminAuditEventListView,
     AdminUserDetailView,
     AdminUserListView,
 )
@@ -41,6 +42,7 @@ urlpatterns = [
     path('admin/groups/<int:group_pk>/contracts/<int:contract_pk>/', AdminGroupContractDetailView.as_view(), name='admin-group-contract-detail'),
     path('admin/groups/<int:group_pk>/seats/', AdminGroupSeatListCreateView.as_view(), name='admin-group-seat-list'),
     path('admin/groups/<int:group_pk>/seats/<int:pk>/', AdminGroupSeatDetailView.as_view(), name='admin-group-seat-detail'),
+    path('admin/audit/', AdminAuditEventListView.as_view(), name='admin-audit-list'),
     path('me/', MeView.as_view(), name='me'),
     path('users/', UserSearchView.as_view(), name='user-search'),
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),

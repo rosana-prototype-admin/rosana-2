@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from groups.models import Group
 
-from .models import Contract, SubscriptionSeat, User, UserSubscription
+from .models import AuditEvent, Contract, SubscriptionSeat, User, UserSubscription
 from .staff import validate_staff_account_change
 
 
@@ -170,6 +170,18 @@ class AdminSubscriptionSeatSerializer(serializers.ModelSerializer):
         if subscription.seats.filter(released_at__isnull=True).count() >= subscription.seat_limit:
             raise serializers.ValidationError('This subscription has no available seats.')
         return user
+
+
+class AdminAuditEventSerializer(serializers.ModelSerializer):
+    actor_username = serializers.CharField(source='actor.username', read_only=True, allow_null=True)
+    group_name = serializers.CharField(source='group.name', read_only=True, allow_null=True)
+
+    class Meta:
+        model = AuditEvent
+        fields = [
+            'id', 'created_at', 'action', 'entity_type', 'entity_id',
+            'actor_username', 'group_name', 'before', 'after',
+        ]
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):

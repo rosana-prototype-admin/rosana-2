@@ -6,9 +6,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .email import send_verification_email
+from .audit import record_admin_event
 from groups.models import Group
 
-from .models import Contract, SubscriptionSeat, User, UserSubscription
+from .models import AuditEvent, Contract, SubscriptionSeat, User, UserSubscription
 from .password_reset import send_password_reset_email
 from .permissions import IsPlatformAdmin
 from .serializers import (
@@ -16,6 +17,7 @@ from .serializers import (
     AdminGroupSerializer,
     AdminSubscriptionSeatSerializer,
     AdminSubscriptionSerializer,
+    AdminAuditEventSerializer,
     AdminUserSerializer,
 )
 
@@ -53,6 +55,14 @@ class AdminUserDetailView(generics.RetrieveUpdateAPIView):
     serializer_class = AdminUserSerializer
     permission_classes = [IsPlatformAdmin]
 
+    def perform_update(self, serializer):
+        user = self.get_object()
+        before = {field: getattr(user, field) for field in ('is_active', 'email_verified', 'first_name', 'last_name', 'company', 'secondary_email')}
+        updated = serializer.save()
+        after = {field: getattr(updated, field) for field in before}
+        if before != after:
+            record_admin_event(self.request, 'user.updated', updated, before, after)
+
 
 class AdminResendVerificationView(APIView):
     permission_classes = [IsPlatformAdmin]
@@ -65,6 +75,7 @@ class AdminResendVerificationView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         send_verification_email(user)
+        record_admin_event(request, 'user.verification_resent', user)
         return Response({'detail': 'A new verification email has been sent.'})
 
 
@@ -79,6 +90,7 @@ class AdminSendPasswordResetView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         send_password_reset_email(user)
+        record_admin_event(request, 'user.password_reset_sent', user)
         return Response({'detail': 'A password reset email has been sent.'})
 
 
@@ -107,6 +119,14 @@ class AdminGroupSubscriptionView(generics.RetrieveUpdateAPIView):
             )
         return subscription
 
+    def perform_update(self, serializer):
+        subscription = self.get_object()
+        before = AdminSubscriptionSerializer(subscription).data
+        updated = serializer.save()
+        after = AdminSubscriptionSerializer(updated).data
+        if before != after:
+            record_admin_event(self.request, 'subscription.updated', updated, before, after, group=updated.group)
+
 
 class AdminGroupContractListCreateView(generics.ListCreateAPIView):
     serializer_class = AdminContractSerializer
@@ -117,7 +137,8 @@ class AdminGroupContractListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         group = get_object_or_404(Group, pk=self.kwargs['group_pk'])
-        serializer.save(group=group)
+        contract = serializer.save(group=group)
+        record_admin_event(self.request, 'contract.created', contract, after=AdminContractSerializer(contract).data, group=group)
 
 
 class AdminGroupContractDetailView(generics.RetrieveUpdateAPIView):
@@ -127,6 +148,14 @@ class AdminGroupContractDetailView(generics.RetrieveUpdateAPIView):
 
     def get_queryset(self):
         return Contract.objects.filter(group_id=self.kwargs['group_pk'])
+
+    def perform_update(self, serializer):
+        contract = self.get_object()
+        before = AdminContractSerializer(contract).data
+        updated = serializer.save()
+        after = AdminContractSerializer(updated).data
+        if before != after:
+            record_admin_event(self.request, 'contract.updated', updated, before, after, group=updated.group)
 
 
 class AdminGroupSeatListCreateView(generics.ListCreateAPIView):
@@ -152,7 +181,8 @@ class AdminGroupSeatListCreateView(generics.ListCreateAPIView):
             raise serializers.ValidationError({'detail': 'Create a subscription before assigning seats.'})
         if subscription.seats.filter(released_at__isnull=True).count() >= subscription.seat_limit:
             raise serializers.ValidationError({'detail': 'This subscription has no available seats.'})
-        serializer.save(subscription=subscription)
+        seat = serializer.save(subscription=subscription)
+        record_admin_event(self.request, 'seat.assigned', seat, after=AdminSubscriptionSeatSerializer(seat).data, group=subscription.group)
 
 
 class AdminGroupSeatDetailView(generics.DestroyAPIView):
@@ -162,5 +192,25 @@ class AdminGroupSeatDetailView(generics.DestroyAPIView):
         return SubscriptionSeat.objects.filter(subscription__group_id=self.kwargs['group_pk'], released_at__isnull=True)
 
     def perform_destroy(self, instance):
+        before = AdminSubscriptionSeatSerializer(instance).data
         instance.released_at = timezone.now()
         instance.save(update_fields=['released_at'])
+        record_admin_event(self.request, 'seat.released', instance, before, AdminSubscriptionSeatSerializer(instance).data, group=instance.subscription.group)
+
+
+class AdminAuditEventListView(generics.ListAPIView):
+    serializer_class = AdminAuditEventSerializer
+    permission_classes = [IsPlatformAdmin]
+
+    def get_queryset(self):
+        queryset = AuditEvent.objects.select_related('actor', 'group').all()
+        action = self.request.query_params.get('action')
+        entity_type = self.request.query_params.get('entity_type')
+        group_id = self.request.query_params.get('group_id')
+        if action:
+            queryset = queryset.filter(action=action)
+        if entity_type:
+            queryset = queryset.filter(entity_type=entity_type)
+        if group_id:
+            queryset = queryset.filter(group_id=group_id)
+        return queryset[:200]

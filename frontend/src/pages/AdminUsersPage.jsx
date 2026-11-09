@@ -129,6 +129,7 @@ export default function AdminUsersPage() {
       <nav className="admin-tabs" aria-label="Administration sections">
         <NavLink to="/admin/users">User accounts</NavLink>
         <NavLink to="/admin/subscriptions">Subscriptions</NavLink>
+        <NavLink to="/admin/audit">Audit log</NavLink>
       </nav>
       <div className="admin-users-header">
         <div>
