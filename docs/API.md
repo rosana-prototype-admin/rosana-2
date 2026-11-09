@@ -67,11 +67,15 @@ Account onboarding details:
 Platform administration details:
 
 - `GET /api/auth/admin/users/` lists users for platform staff, with optional `q`, `is_active`, `email_verified`, and `subscription_type` filters.
-- `GET/PATCH /api/auth/admin/users/<id>/` reads or updates account status and subscription assignment for platform staff.
+- `GET/PATCH /api/auth/admin/users/<id>/` reads or updates account profile and lifecycle fields for platform staff.
 - `POST /api/auth/admin/users/<id>/resend-verification/` resends verification mail for an unverified account.
 - `POST /api/auth/admin/users/<id>/send-password-reset/` sends a password-reset email for an active, verified account.
-- `GET/PATCH /api/auth/admin/users/<id>/subscription/` reads or updates the user's dated subscription record.
-- `GET/POST /api/auth/admin/users/<id>/contracts/` lists or creates contract records for a user.
-- `GET/PATCH /api/auth/admin/users/<id>/contracts/<contract-id>/` reads or updates one contract record.
+- `GET /api/auth/admin/groups/` lists company groups with members and subscription summaries.
+- `GET/PATCH /api/auth/admin/groups/<group-id>/subscription/` reads or updates the company's dated subscription and seat limit.
+- `GET/POST /api/auth/admin/groups/<group-id>/contracts/` lists or creates company contract records.
+- `GET/PATCH /api/auth/admin/groups/<group-id>/contracts/<contract-id>/` reads or updates one company contract.
+- `GET/POST /api/auth/admin/groups/<group-id>/seats/` lists or assigns seats to company members.
+- `DELETE /api/auth/admin/groups/<group-id>/seats/<seat-id>/` releases a seat without deleting its history.
 - These endpoints require a Django `is_staff` user. The `subscription_type` value does not grant administrative access.
+- Company subscriptions are owned by Groups; the legacy per-user `subscription_type` field is retained only for compatibility and is not assigned from account management.
 - Administrative requests also require the staff user to be active, and the last active platform administrator cannot be disabled or demoted.

@@ -3,7 +3,10 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-    dependencies = [('accounts', '0005_user_email_verified')]
+    dependencies = [
+        ('accounts', '0005_user_email_verified'),
+        ('groups', '0004_group_admin'),
+    ]
 
     operations = [
         migrations.CreateModel(
@@ -18,7 +21,7 @@ class Migration(migrations.Migration):
                 ('notes', models.TextField(blank=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='contracts', to='accounts.user')),
+                ('group', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='contracts', to='groups.group')),
             ],
             options={'ordering': ['-created_at']},
         ),
@@ -30,12 +33,28 @@ class Migration(migrations.Migration):
                 ('status', models.CharField(choices=[('trialing', 'Trialing'), ('active', 'Active'), ('paused', 'Paused'), ('past_due', 'Past due'), ('canceled', 'Canceled'), ('expired', 'Expired')], default='active', max_length=20)),
                 ('starts_at', models.DateTimeField()),
                 ('ends_at', models.DateTimeField(blank=True, null=True)),
+                ('seat_limit', models.PositiveIntegerField(default=1)),
                 ('external_reference', models.CharField(blank=True, max_length=255)),
                 ('notes', models.TextField(blank=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='subscriptions', to='accounts.user')),
+                ('group', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='subscriptions', to='groups.group')),
             ],
             options={'ordering': ['-starts_at', '-created_at']},
+        ),
+        migrations.CreateModel(
+            name='SubscriptionSeat',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('assigned_at', models.DateTimeField(auto_now_add=True)),
+                ('released_at', models.DateTimeField(blank=True, null=True)),
+                ('subscription', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='seats', to='accounts.usersubscription')),
+                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='subscription_seats', to='accounts.user')),
+            ],
+            options={'ordering': ['user__username']},
+        ),
+        migrations.AddConstraint(
+            model_name='subscriptionseat',
+            constraint=models.UniqueConstraint(fields=('subscription', 'user'), name='unique_subscription_seat_user'),
         ),
     ]

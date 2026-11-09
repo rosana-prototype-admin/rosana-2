@@ -6,7 +6,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from geo.models import Jcode
-from groups.models import Group
+from groups.models import Group, Membership
 
 from .models import Contract, User, UserSubscription
 from .staff import validate_staff_account_change
@@ -295,6 +295,8 @@ class AdminUserManagementTests(APITestCase):
         self.user = User.objects.create_user(
             username='managed-user', email='user@example.com', password='pw',
         )
+        self.company = Group.objects.create(name='Managed Company', admin=self.admin)
+        Membership.objects.create(group=self.company, user=self.user)
     def test_admin_user_list_requires_staff(self):
         response = self.client.get(reverse('admin-user-list'))
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -311,7 +313,7 @@ class AdminUserManagementTests(APITestCase):
         self.assertEqual(response.data[0]['username'], 'managed-user')
         self.assertIn('is_staff', response.data[0])
 
-    def test_staff_can_update_account_status_and_subscription(self):
+    def test_staff_can_update_account_status_without_assigning_a_company_subscription(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.patch(
             reverse('admin-user-detail', args=[self.user.pk]),
@@ -322,7 +324,7 @@ class AdminUserManagementTests(APITestCase):
         self.user.refresh_from_db()
         self.assertFalse(self.user.is_active)
         self.assertFalse(self.user.email_verified)
-        self.assertEqual(self.user.subscription_type, 'basic')
+        self.assertEqual(self.user.subscription_type, 'none')
 
     def test_staff_cannot_deactivate_themselves(self):
         self.client.force_authenticate(user=self.admin)
@@ -399,36 +401,35 @@ class AdminUserManagementTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_admin_can_read_and_update_subscription_record(self):
+    def test_admin_can_read_and_update_company_subscription_record(self):
         self.client.force_authenticate(user=self.admin)
-        response = self.client.get(reverse('admin-subscription', args=[self.user.pk]))
+        response = self.client.get(reverse('admin-group-subscription', args=[self.company.pk]))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['plan_code'], 'none')
 
         response = self.client.patch(
-            reverse('admin-subscription', args=[self.user.pk]),
-            {'plan_code': 'premium', 'status': 'trialing', 'notes': 'Pilot access'},
+            reverse('admin-group-subscription', args=[self.company.pk]),
+            {'plan_code': 'premium', 'status': 'trialing', 'seat_limit': 5, 'notes': 'Pilot access'},
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.user.refresh_from_db()
-        self.assertEqual(self.user.subscription_type, 'premium')
         self.assertEqual(response.data['status'], 'trialing')
-        self.assertEqual(UserSubscription.objects.filter(user=self.user).count(), 1)
+        self.assertEqual(response.data['seat_limit'], 5)
+        self.assertEqual(UserSubscription.objects.filter(group=self.company).count(), 1)
 
-    def test_admin_can_create_and_update_contract(self):
+    def test_admin_can_create_and_update_company_contract(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.post(
-            reverse('admin-contract-list', args=[self.user.pk]),
+            reverse('admin-group-contract-list', args=[self.company.pk]),
             {'title': 'Pilot agreement', 'status': 'pending', 'notes': 'Needs signature'},
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         contract_id = response.data['id']
-        self.assertTrue(Contract.objects.filter(pk=contract_id, user=self.user).exists())
+        self.assertTrue(Contract.objects.filter(pk=contract_id, group=self.company).exists())
 
         response = self.client.patch(
-            reverse('admin-contract-detail', args=[self.user.pk, contract_id]),
+            reverse('admin-group-contract-detail', args=[self.company.pk, contract_id]),
             {'status': 'active'},
             format='json',
         )
@@ -438,10 +439,25 @@ class AdminUserManagementTests(APITestCase):
     def test_non_staff_cannot_manage_subscription_or_contracts(self):
         self.client.force_authenticate(user=self.user)
         self.assertEqual(
-            self.client.get(reverse('admin-subscription', args=[self.user.pk])).status_code,
+            self.client.get(reverse('admin-group-subscription', args=[self.company.pk])).status_code,
             status.HTTP_403_FORBIDDEN,
         )
         self.assertEqual(
-            self.client.get(reverse('admin-contract-list', args=[self.user.pk])).status_code,
+            self.client.get(reverse('admin-group-contract-list', args=[self.company.pk])).status_code,
             status.HTTP_403_FORBIDDEN,
         )
+
+    def test_admin_can_assign_seats_only_to_group_members_within_limit(self):
+        self.client.force_authenticate(user=self.admin)
+        subscription_url = reverse('admin-group-subscription', args=[self.company.pk])
+        self.client.patch(subscription_url, {'seat_limit': 1}, format='json')
+        response = self.client.post(
+            reverse('admin-group-seat-list', args=[self.company.pk]),
+            {'user_id': self.user.pk}, format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        response = self.client.post(
+            reverse('admin-group-seat-list', args=[self.company.pk]),
+            {'user_id': self.admin.pk}, format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

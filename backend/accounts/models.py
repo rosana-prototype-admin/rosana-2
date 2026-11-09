@@ -113,13 +113,14 @@ class User(AbstractUser):
 
 
 class UserSubscription(models.Model):
-    """A dated subscription assignment, separate from the legacy user label."""
+    """A dated subscription owned by a company-level Group."""
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subscriptions')
+    group = models.ForeignKey('groups.Group', on_delete=models.CASCADE, related_name='subscriptions')
     plan_code = models.CharField(max_length=20, choices=SubscriptionType.choices)
     status = models.CharField(max_length=20, choices=SubscriptionStatus.choices, default=SubscriptionStatus.ACTIVE)
     starts_at = models.DateTimeField()
     ends_at = models.DateTimeField(blank=True, null=True)
+    seat_limit = models.PositiveIntegerField(default=1)
     external_reference = models.CharField(max_length=255, blank=True)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -129,13 +130,13 @@ class UserSubscription(models.Model):
         ordering = ['-starts_at', '-created_at']
 
     def __str__(self):
-        return f'{self.user.username}: {self.plan_code} ({self.status})'
+        return f'{self.group.name}: {self.plan_code} ({self.status})'
 
 
 class Contract(models.Model):
-    """A lightweight contract record pending finalized legal/billing requirements."""
+    """A lightweight company contract record pending finalized legal/billing requirements."""
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='contracts')
+    group = models.ForeignKey('groups.Group', on_delete=models.CASCADE, related_name='contracts')
     title = models.CharField(max_length=255)
     status = models.CharField(max_length=20, choices=ContractStatus.choices, default=ContractStatus.DRAFT)
     starts_at = models.DateTimeField(blank=True, null=True)
@@ -149,4 +150,22 @@ class Contract(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f'{self.user.username}: {self.title}'
+        return f'{self.group.name}: {self.title}'
+
+
+class SubscriptionSeat(models.Model):
+    """An explicit seat assignment; group membership alone does not consume a seat."""
+
+    subscription = models.ForeignKey(UserSubscription, on_delete=models.CASCADE, related_name='seats')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subscription_seats')
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    released_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['user__username']
+        constraints = [
+            models.UniqueConstraint(fields=['subscription', 'user'], name='unique_subscription_seat_user'),
+        ]
+
+    def __str__(self):
+        return f'{self.subscription.group.name}: {self.user.username}'

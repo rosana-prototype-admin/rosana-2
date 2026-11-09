@@ -2,7 +2,9 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
 
-from .models import Contract, User, UserSubscription
+from groups.models import Group
+
+from .models import Contract, SubscriptionSeat, User, UserSubscription
 from .staff import validate_staff_account_change
 
 
@@ -80,7 +82,6 @@ class AdminUserSerializer(serializers.ModelSerializer):
             'email_verified',
             'is_active',
             'is_staff',
-            'subscription_type',
             'date_joined',
             'last_login',
         ]
@@ -110,9 +111,14 @@ class AdminSubscriptionSerializer(serializers.ModelSerializer):
         model = UserSubscription
         fields = [
             'id', 'plan_code', 'status', 'starts_at', 'ends_at',
-            'external_reference', 'notes', 'created_at', 'updated_at',
+            'seat_limit', 'external_reference', 'notes', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate_seat_limit(self, value):
+        if self.instance and value < self.instance.seats.filter(released_at__isnull=True).count():
+            raise serializers.ValidationError('Seat limit cannot be lower than the number of assigned seats.')
+        return value
 
 
 class AdminContractSerializer(serializers.ModelSerializer):
@@ -123,6 +129,47 @@ class AdminContractSerializer(serializers.ModelSerializer):
             'external_reference', 'notes', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class AdminGroupSerializer(serializers.ModelSerializer):
+    admin = UserSearchResultSerializer(read_only=True)
+    members = serializers.SerializerMethodField()
+    member_count = serializers.SerializerMethodField()
+    subscription = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Group
+        fields = ['id', 'name', 'parent', 'admin', 'members', 'member_count', 'subscription']
+
+    def get_members(self, obj):
+        return UserSearchResultSerializer(obj.effective_members(), many=True).data
+
+    def get_member_count(self, obj):
+        return obj.effective_members().count()
+
+    def get_subscription(self, obj):
+        subscription = obj.subscriptions.order_by('-starts_at', '-created_at').first()
+        return AdminSubscriptionSerializer(subscription).data if subscription else None
+
+
+class AdminSubscriptionSeatSerializer(serializers.ModelSerializer):
+    user = UserSearchResultSerializer(read_only=True)
+    user_id = serializers.PrimaryKeyRelatedField(source='user', queryset=User.objects.all(), write_only=True)
+
+    class Meta:
+        model = SubscriptionSeat
+        fields = ['id', 'user', 'user_id', 'assigned_at', 'released_at']
+        read_only_fields = ['id', 'assigned_at', 'released_at']
+
+    def validate_user(self, user):
+        subscription = self.context['subscription']
+        if subscription is None:
+            raise serializers.ValidationError('Create a subscription before assigning seats.')
+        if user not in subscription.group.effective_members():
+            raise serializers.ValidationError('The user must belong to this company group before receiving a seat.')
+        if subscription.seats.filter(released_at__isnull=True).count() >= subscription.seat_limit:
+            raise serializers.ValidationError('This subscription has no available seats.')
+        return user
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):

@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import DataTable from '../components/DataTable'
 import {
   listAdminUsers,
-  getAdminSubscription,
-  updateAdminSubscription,
-  listAdminContracts,
-  createAdminContract,
   resendAdminVerification,
   sendAdminPasswordReset,
   updateAdminUser,
@@ -13,39 +10,6 @@ import {
 import '../styles/formFeedback.css'
 import './AdminUsersPage.css'
 
-const SUBSCRIPTION_OPTIONS = [
-  ['none', 'None'],
-  ['basic', 'Basic'],
-  ['premium', 'Premium'],
-  ['admin', 'Admin'],
-  ['crossroads', 'Crossroads'],
-  ['borough', 'Borough'],
-  ['ville', 'Ville'],
-  ['shire', 'Shire'],
-  ['provincia', 'Provincia'],
-  ['comarca', 'Comarca'],
-  ['metro', 'Metro'],
-  ['commonwealth', 'Commonwealth'],
-  ['republic', 'Republic'],
-]
-
-const SUBSCRIPTION_STATUS_OPTIONS = [
-  ['trialing', 'Trialing'], ['active', 'Active'], ['paused', 'Paused'],
-  ['past_due', 'Past due'], ['canceled', 'Canceled'], ['expired', 'Expired'],
-]
-
-const CONTRACT_STATUS_OPTIONS = [
-  ['draft', 'Draft'], ['pending', 'Pending'], ['active', 'Active'],
-  ['expired', 'Expired'], ['terminated', 'Terminated'],
-]
-
-function localDateTime(value) {
-  return value ? new Date(value).toISOString().slice(0, 16) : ''
-}
-
-function apiDateTime(value) {
-  return value ? new Date(value).toISOString() : null
-}
 
 function statusLabel(user) {
   if (!user.is_active) return 'Inactive'
@@ -67,9 +31,6 @@ export default function AdminUsersPage() {
   const [busyAction, setBusyAction] = useState('')
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
-  const [subscription, setSubscription] = useState(null)
-  const [contracts, setContracts] = useState([])
-  const [isLoadingRecords, setIsLoadingRecords] = useState(false)
 
   const loadUsers = useCallback(async () => {
     setError('')
@@ -111,24 +72,6 @@ export default function AdminUsersPage() {
 
   const selectedUser = users.find((user) => user.id === selectedId) || null
 
-  useEffect(() => {
-    if (!selectedUser) return undefined
-    let cancelled = false
-    Promise.all([getAdminSubscription(selectedUser.id), listAdminContracts(selectedUser.id)])
-      .then(([subscriptionData, contractData]) => {
-        if (!cancelled) {
-          setSubscription(subscriptionData)
-          setContracts(contractData)
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setError('Unable to load subscription and contract records.')
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoadingRecords(false)
-      })
-    return () => { cancelled = true }
-  }, [selectedUser])
 
   async function handleSave(event) {
     event.preventDefault()
@@ -141,7 +84,6 @@ export default function AdminUsersPage() {
       const updated = await updateAdminUser(selectedUser.id, {
         is_active: formData.get('is_active') === 'true',
         email_verified: formData.get('email_verified') === 'true',
-        subscription_type: formData.get('subscription_type'),
         first_name: formData.get('first_name'),
         last_name: formData.get('last_name'),
         company: formData.get('company'),
@@ -174,58 +116,12 @@ export default function AdminUsersPage() {
     }
   }
 
-  async function handleSubscriptionSave(event) {
-    event.preventDefault()
-    if (!selectedUser || !subscription) return
-    setError('')
-    setSaved(false)
-    const form = new FormData(event.currentTarget)
-    try {
-      const updated = await updateAdminSubscription(selectedUser.id, {
-        plan_code: form.get('plan_code'),
-        status: form.get('status'),
-        starts_at: apiDateTime(form.get('starts_at')),
-        ends_at: apiDateTime(form.get('ends_at')),
-        external_reference: form.get('external_reference'),
-        notes: form.get('notes'),
-      })
-      setSubscription(updated)
-      setUsers((current) => current.map((user) => user.id === selectedUser.id
-        ? { ...user, subscription_type: updated.plan_code } : user))
-      setSaved('Subscription record updated.')
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Unable to update the subscription record.')
-    }
-  }
-
-  async function handleContractCreate(event) {
-    event.preventDefault()
-    if (!selectedUser) return
-    setError('')
-    const form = new FormData(event.currentTarget)
-    try {
-      const created = await createAdminContract(selectedUser.id, {
-        title: form.get('title'),
-        status: form.get('contract_status'),
-        starts_at: apiDateTime(form.get('contract_starts_at')),
-        ends_at: apiDateTime(form.get('contract_ends_at')),
-        external_reference: form.get('contract_reference'),
-        notes: form.get('contract_notes'),
-      })
-      setContracts((current) => [created, ...current])
-      event.currentTarget.reset()
-      setSaved('Contract record created.')
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Unable to create the contract record.')
-    }
-  }
 
   const columns = [
     { key: 'username', header: 'Username' },
     { key: 'email', header: 'Email' },
     { key: 'name', header: 'Name', render: displayName, sortable: false },
     { key: 'status', header: 'Status', render: statusLabel, sortValue: statusLabel },
-    { key: 'subscription_type', header: 'Subscription' },
   ]
 
   return (
@@ -233,7 +129,8 @@ export default function AdminUsersPage() {
       <div className="admin-users-header">
         <div>
           <h1>Account management</h1>
-          <p>Review account status and subscription assignments.</p>
+          <p>Review account status and lifecycle actions.</p>
+          <p><Link to="/admin/companies">Manage company subscriptions and seats</Link></p>
         </div>
         <div className="admin-users-filters">
           <input
@@ -263,7 +160,7 @@ export default function AdminUsersPage() {
           rows={filteredUsers}
           getRowId={(user) => user.id}
           selectedId={selectedId}
-          onSelectRow={(id) => { setSelectedId(id); setSaved(false); setIsLoadingRecords(true) }}
+          onSelectRow={(id) => { setSelectedId(id); setSaved(false) }}
           emptyMessage="No accounts match these filters."
         />
       )}
@@ -307,12 +204,6 @@ export default function AdminUsersPage() {
                 <option value="false">Unverified</option>
               </select>
             </label>
-            <label>
-              <span>Subscription</span>
-              <select name="subscription_type" defaultValue={selectedUser.subscription_type} disabled={isSaving}>
-                {SUBSCRIPTION_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>
-            </label>
           </div>
           <button type="submit" className="admin-user-save" disabled={isSaving}>
             {isSaving ? 'Saving...' : 'Save account changes'}
@@ -336,50 +227,6 @@ export default function AdminUsersPage() {
         </form>
       )}
 
-      {selectedUser && (
-        <section className="admin-user-records">
-          <h2>Subscription and contracts</h2>
-          {isLoadingRecords ? <p className="text-sm">Loading records...</p> : (
-            <>
-              {subscription && (
-                <form className="admin-record-form" onSubmit={handleSubscriptionSave}>
-                  <h3>Current subscription record</h3>
-                  <div className="admin-user-fields">
-                    <label><span>Plan</span><select name="plan_code" defaultValue={subscription.plan_code}>{SUBSCRIPTION_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-                    <label><span>Status</span><select name="status" defaultValue={subscription.status}>{SUBSCRIPTION_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-                    <label><span>Starts</span><input name="starts_at" type="datetime-local" defaultValue={localDateTime(subscription.starts_at)} /></label>
-                    <label><span>Ends</span><input name="ends_at" type="datetime-local" defaultValue={localDateTime(subscription.ends_at)} /></label>
-                    <label><span>External reference</span><input name="external_reference" defaultValue={subscription.external_reference || ''} /></label>
-                    <label><span>Notes</span><input name="notes" defaultValue={subscription.notes || ''} /></label>
-                  </div>
-                  <button type="submit" className="admin-user-save">Save subscription</button>
-                </form>
-              )}
-              <div className="admin-record-list">
-                <h3>Contract records</h3>
-                {contracts.length === 0 ? <p className="text-sm">No contracts recorded.</p> : contracts.map((contract) => (
-                  <div className="admin-record-card" key={contract.id}>
-                    <strong>{contract.title}</strong><span>{contract.status}</span>
-                    <small>{contract.starts_at ? new Date(contract.starts_at).toLocaleDateString() : 'No start date'}</small>
-                  </div>
-                ))}
-              </div>
-              <form className="admin-record-form" onSubmit={handleContractCreate}>
-                <h3>Add contract record</h3>
-                <div className="admin-user-fields">
-                  <label><span>Title</span><input name="title" required /></label>
-                  <label><span>Status</span><select name="contract_status" defaultValue="draft">{CONTRACT_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-                  <label><span>Starts</span><input name="contract_starts_at" type="datetime-local" /></label>
-                  <label><span>Ends</span><input name="contract_ends_at" type="datetime-local" /></label>
-                  <label><span>External reference</span><input name="contract_reference" /></label>
-                  <label><span>Notes</span><input name="contract_notes" /></label>
-                </div>
-                <button type="submit" className="admin-user-save">Add contract</button>
-              </form>
-            </>
-          )}
-        </section>
-      )}
     </main>
   )
 }

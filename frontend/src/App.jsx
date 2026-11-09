@@ -21,6 +21,7 @@ import CustomCmfSetupPage from './pages/CustomCmfSetupPage'
 import CustomCmfsPage from './pages/CustomCmfsPage'
 import SettingsPage from './pages/SettingsPage'
 import AdminUsersPage from './pages/AdminUsersPage'
+import AdminGroupsPage from './pages/AdminGroupsPage'
 
 function App() {
   return (
@@ -50,6 +51,7 @@ function App() {
           <Route path="/settings" element={<SettingsPage />} />
           <Route element={<AdminRoute />}>
             <Route path="/admin/users" element={<AdminUsersPage />} />
+            <Route path="/admin/companies" element={<AdminGroupsPage />} />
           </Route>
           <Route path="/cmfs" element={<CustomCmfsPage />} />
           <Route path="/cmfs/new" element={<CustomCmfSetupPage key="new-cmf" />} />

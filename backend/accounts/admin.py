@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
-from .models import Contract, User, UserSubscription
+from .models import Contract, SubscriptionSeat, User, UserSubscription
 from .staff import validate_staff_account_change
 
 
@@ -47,13 +47,20 @@ class UserAdmin(DjangoUserAdmin):
 
 @admin.register(UserSubscription)
 class UserSubscriptionAdmin(admin.ModelAdmin):
-    list_display = ('user', 'plan_code', 'status', 'starts_at', 'ends_at')
+    list_display = ('group', 'plan_code', 'status', 'seat_limit', 'starts_at', 'ends_at')
     list_filter = ('plan_code', 'status')
-    search_fields = ('user__username', 'user__email', 'external_reference')
+    search_fields = ('group__name', 'external_reference')
 
 
 @admin.register(Contract)
 class ContractAdmin(admin.ModelAdmin):
-    list_display = ('title', 'user', 'status', 'starts_at', 'ends_at')
+    list_display = ('title', 'group', 'status', 'starts_at', 'ends_at')
     list_filter = ('status',)
-    search_fields = ('title', 'user__username', 'user__email', 'external_reference')
+    search_fields = ('title', 'group__name', 'external_reference')
+
+
+@admin.register(SubscriptionSeat)
+class SubscriptionSeatAdmin(admin.ModelAdmin):
+    list_display = ('subscription', 'user', 'assigned_at', 'released_at')
+    list_filter = ('released_at',)
+    search_fields = ('subscription__group__name', 'user__username', 'user__email')
