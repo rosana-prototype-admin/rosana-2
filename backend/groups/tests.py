@@ -3,7 +3,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from accounts.models import User
+from accounts.models import AuditEvent, User
 from geo.models import Jcode
 
 from .models import Group, Membership
@@ -342,6 +342,10 @@ class SetAdminTests(GroupsTestCase):
         self.assertFalse(Membership.objects.filter(group=group, user=self.other).exists())
         # ...and the outgoing admin becomes a regular member instead of losing access.
         self.assertTrue(Membership.objects.filter(group=group, user=self.admin).exists())
+        audit_event = AuditEvent.objects.get(action='group.admin_transferred', entity_id=str(group.pk))
+        self.assertEqual(audit_event.actor_id, self.admin.pk)
+        self.assertEqual(audit_event.before['admin_id'], self.admin.pk)
+        self.assertEqual(audit_event.after['admin_id'], self.other.pk)
 
     def test_target_must_be_a_current_member(self):
         group = Group.objects.create(name='Agency', admin=self.admin)
@@ -355,3 +359,28 @@ class SetAdminTests(GroupsTestCase):
         self.client.force_authenticate(user=self.admin)
         response = self.client.post(self.set_admin_url(group), {'user_id': self.admin.pk}, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_inactive_target_cannot_become_admin(self):
+        group = Group.objects.create(name='Agency', admin=self.admin)
+        Membership.objects.create(user=self.other, group=group)
+        self.other.is_active = False
+        self.other.save(update_fields=['is_active'])
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(self.set_admin_url(group), {'user_id': self.other.pk}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        group.refresh_from_db()
+        self.assertEqual(group.admin_id, self.admin.pk)
+        self.assertTrue(Membership.objects.filter(group=group, user=self.other).exists())
+
+    def test_unverified_target_cannot_become_admin(self):
+        group = Group.objects.create(name='Agency', admin=self.admin)
+        Membership.objects.create(user=self.other, group=group)
+        self.other.email_verified = False
+        self.other.save(update_fields=['email_verified'])
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(self.set_admin_url(group), {'user_id': self.other.pk}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        group.refresh_from_db()
+        self.assertEqual(group.admin_id, self.admin.pk)

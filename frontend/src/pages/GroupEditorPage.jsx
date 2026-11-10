@@ -68,6 +68,8 @@ export default function GroupEditorPage() {
   const [memberDialogError, setMemberDialogError] = useState('')
   const [isRemoveMemberDialogOpen, setIsRemoveMemberDialogOpen] = useState(false)
   const [isRemovingMember, setIsRemovingMember] = useState(false)
+  const [isTransferAdminDialogOpen, setIsTransferAdminDialogOpen] = useState(false)
+  const [isTransferringAdmin, setIsTransferringAdmin] = useState(false)
 
   const [selectedSubgroupId, setSelectedSubgroupId] = useState(null)
   const [isCreatingSubgroup, setIsCreatingSubgroup] = useState(false)
@@ -256,16 +258,22 @@ export default function GroupEditorPage() {
     }
   }
 
-  async function handleMakeAdmin() {
+  async function handleConfirmMakeAdmin() {
     if (!selectedMember) return
     setMemberError('')
+    setIsTransferringAdmin(true)
     try {
       const updated = await setGroupAdmin(id, selectedMember.id)
       setGroup((prev) => ({ ...prev, ...updated }))
       setSelectedMemberId(null)
+      setIsTransferAdminDialogOpen(false)
       await loadMembers()
-    } catch {
-      setMemberError('Unable to make this member the admin. Please try again.')
+    } catch (err) {
+      const data = err.response?.data
+      const message = Array.isArray(data?.user_id) ? data.user_id[0] : data?.detail
+      setMemberError(message || 'Unable to transfer group administration. Please try again.')
+    } finally {
+      setIsTransferringAdmin(false)
     }
   }
 
@@ -433,10 +441,10 @@ export default function GroupEditorPage() {
             </button>
             <button
               type="button"
-              onClick={handleMakeAdmin}
-              disabled={!selectedMember || selectedMember.role === 'admin'}
+              onClick={() => setIsTransferAdminDialogOpen(true)}
+              disabled={!selectedMember || selectedMember.role === 'admin' || isTransferringAdmin}
             >
-              Make Admin
+              Transfer administration
             </button>
           </div>
         )}
@@ -496,6 +504,18 @@ export default function GroupEditorPage() {
         error={memberDialogError}
         onSubmit={handleSubmitMemberDialog}
         onCancel={() => setIsMemberDialogOpen(false)}
+      />}
+
+      {!isNew && <ConfirmDialog
+        isOpen={isTransferAdminDialogOpen}
+        title="Transfer group administration?"
+        message={`This will make ${
+          selectedMember ? memberLabel(selectedMember) : 'this member'
+        } the group administrator. You will remain a regular member.`}
+        confirmLabel="Transfer administration"
+        isBusy={isTransferringAdmin}
+        onConfirm={handleConfirmMakeAdmin}
+        onCancel={() => setIsTransferAdminDialogOpen(false)}
       />}
 
       {!isNew && <ConfirmDialog

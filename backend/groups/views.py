@@ -1,9 +1,10 @@
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.db.models import Q
 from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 
 from notifications.serializers import NotificationSerializer
@@ -148,12 +149,30 @@ class GroupViewSet(viewsets.ModelViewSet):
 
         membership = get_object_or_404(Membership, group=group, user=new_admin)
         previous_admin = group.admin
-        membership.delete()
-        group.admin = new_admin
-        group.save(update_fields=['admin', 'modified_at'])
-        # The outgoing admin keeps access to the group as a regular member,
-        # rather than disappearing from it entirely.
-        Membership.objects.get_or_create(group=group, user=previous_admin, defaults={'roles': []})
+        if new_admin.pk == previous_admin.pk:
+            raise ValidationError({'user_id': 'This user is already the group administrator.'})
+        if not new_admin.is_active:
+            raise ValidationError({'user_id': 'The new administrator must have an active account.'})
+        if not new_admin.email_verified:
+            raise ValidationError({'user_id': 'The new administrator must have a verified email address.'})
+
+        # Keep the role swap atomic: either both users' access and the admin
+        # pointer change, or none of them do.
+        with transaction.atomic():
+            membership.delete()
+            group.admin = new_admin
+            group.save(update_fields=['admin', 'modified_at'])
+            # The outgoing admin keeps access as a regular member.
+            Membership.objects.get_or_create(group=group, user=previous_admin, defaults={'roles': []})
+
+        record_admin_event(
+            request,
+            'group.admin_transferred',
+            group,
+            before={'admin_id': previous_admin.pk, 'admin_username': previous_admin.username},
+            after={'admin_id': new_admin.pk, 'admin_username': new_admin.username},
+            group=group,
+        )
 
         return Response(GroupSerializer(group, context=self.get_serializer_context()).data)
 

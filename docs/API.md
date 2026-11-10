@@ -42,6 +42,7 @@ These endpoints do not require authentication:
 - Groups and memberships: `/api/groups/`
 - `DELETE /api/groups/<id>/` archives a Group and its subgroups; it no longer permanently deletes them.
 - `POST /api/groups/<id>/restore/` restores an archived Group tree for platform administrators.
+- `POST /api/groups/<id>/set-admin/` transfers administration to an active, email-verified group member. The outgoing administrator remains a regular member, and the transfer is recorded in the audit log.
 - Notifications: `/api/notifications/`
 - Comments and votes: `/api/projects/<id>/comments/` and `/api/comments/`
 - Focus areas and intervention types: `/api/focus-areas/` and `/api/intervention-types/`
