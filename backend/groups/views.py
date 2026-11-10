@@ -24,16 +24,16 @@ from .serializers import (
 
 
 def _group_members(group):
-    """Flatten the admin (synthetic, no Membership row required) + direct members into one role-tagged list."""
-    def _entry(user, role, roles=None):
+    """Flatten group members with system and organizational roles separated."""
+    def _entry(user, rosana_role, organizational_roles=None):
         return {
             'id': user.id,
             'username': user.username,
             'first_name': user.first_name,
             'last_name': user.last_name,
             'email': user.email,
-            'role': role,
-            'roles': roles or [],
+            'rosana_role': rosana_role,
+            'organizational_roles': organizational_roles or [],
         }
 
     members = [_entry(group.admin, 'admin')]

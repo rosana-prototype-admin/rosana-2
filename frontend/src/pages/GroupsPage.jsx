@@ -215,7 +215,7 @@ export default function GroupsPage() {
   const memberColumns = [
     { key: 'name', header: 'Name', sortValue: (member) => displayUserName(member), render: displayUserName },
     { key: 'email', header: 'Email' },
-    { key: 'role', header: 'Role', render: (member) => member.role === 'admin' ? 'Admin' : 'Member' },
+    { key: 'rosana_role', header: 'Rosana Role', render: (member) => member.rosana_role === 'admin' ? 'Admin' : 'Member' },
   ]
 
   return (

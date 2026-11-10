@@ -51,8 +51,11 @@ export async function restoreGroup(id) {
 
 // Sends a pending invitation (Notification) rather than adding the member
 // directly -- the invitee must accept it before a Membership is created.
-export async function inviteGroupMember(groupId, { userId, roles }) {
-  const { data } = await client.post(`/groups/${groupId}/invite/`, { user_id: userId, roles })
+export async function inviteGroupMember(groupId, { userId, organizationalRoles }) {
+  const { data } = await client.post(`/groups/${groupId}/invite/`, {
+    user_id: userId,
+    organizational_roles: organizationalRoles,
+  })
   return data
 }
 
@@ -62,8 +65,10 @@ export async function requestToJoinGroup(groupId) {
   return data
 }
 
-export async function changeGroupMemberRoles(groupId, userId, roles) {
-  const { data } = await client.patch(`/groups/${groupId}/members/${userId}/`, { roles })
+export async function changeGroupMemberRoles(groupId, userId, organizationalRoles) {
+  const { data } = await client.patch(`/groups/${groupId}/members/${userId}/`, {
+    organizational_roles: organizationalRoles,
+  })
   return data
 }
 

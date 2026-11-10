@@ -8,10 +8,10 @@ import '../styles/formFeedback.css'
  * mode: 'invite' | 'edit'
  * - invite: search for a user (must pick an actual suggestion -- the Group
  *   members API takes a numeric user_id, not a username/email identifier
- *   like Opportunity's invite does) plus a free-text role, then calls
- *   onSubmit({ userId, role }).
- * - edit: shows the fixed member (memberLabel) and just the role input,
- *   then calls onSubmit({ role }).
+ *   like Opportunity's invite does) plus a free-text organizational role,
+ *   then calls onSubmit({ userId, organizationalRole }).
+ * - edit: shows the fixed member (memberLabel) and just the organizational
+ *   role input, then calls onSubmit({ organizationalRole }).
  */
 export default function GroupMemberDialog({
   isOpen,
@@ -25,14 +25,14 @@ export default function GroupMemberDialog({
 }) {
   const [query, setQuery] = useState('')
   const [selectedUser, setSelectedUser] = useState(null)
-  const [role, setRole] = useState(initialRole)
+  const [organizationalRole, setOrganizationalRole] = useState(initialRole)
 
   useEffect(() => {
     function resetForm() {
       if (isOpen) {
         setQuery('')
         setSelectedUser(null)
-        setRole(initialRole)
+        setOrganizationalRole(initialRole)
       }
     }
     resetForm()
@@ -56,7 +56,9 @@ export default function GroupMemberDialog({
 
   function handleSubmit(event) {
     event.preventDefault()
-    onSubmit(mode === 'invite' ? { userId: selectedUser.id, role: role.trim() } : { role: role.trim() })
+    onSubmit(mode === 'invite'
+      ? { userId: selectedUser.id, organizationalRole: organizationalRole.trim() }
+      : { organizationalRole: organizationalRole.trim() })
   }
 
   return (
@@ -67,7 +69,7 @@ export default function GroupMemberDialog({
         onSubmit={handleSubmit}
         noValidate
       >
-        <h3>{mode === 'invite' ? 'Invite a user' : `Edit role for ${memberLabel}`}</h3>
+        <h3>{mode === 'invite' ? 'Invite a user' : `Edit organizational role for ${memberLabel}`}</h3>
 
         {error && (
           <p className="form-error" role="alert">
@@ -89,11 +91,11 @@ export default function GroupMemberDialog({
         )}
 
         <label className="editor-field">
-          <span className="label">Role</span>
+          <span className="label">Organizational Role</span>
           <input
             type="text"
-            value={role}
-            onChange={(event) => setRole(event.target.value)}
+            value={organizationalRole}
+            onChange={(event) => setOrganizationalRole(event.target.value)}
             placeholder="e.g. Coordinator"
           />
         </label>

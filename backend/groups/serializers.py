@@ -56,15 +56,16 @@ class MembershipSerializer(serializers.ModelSerializer):
 
     user = UserSearchResultSerializer(read_only=True)
     group = serializers.PrimaryKeyRelatedField(read_only=True)
+    organizational_roles = serializers.ListField(source='roles', default=list)
 
     class Meta:
         model = Membership
-        fields = ['id', 'group', 'user', 'roles', 'created_at', 'modified_at']
+        fields = ['id', 'group', 'user', 'organizational_roles', 'created_at', 'modified_at']
         read_only_fields = ['id', 'group', 'user', 'created_at', 'modified_at']
 
-    def validate_roles(self, value):
+    def validate_organizational_roles(self, value):
         if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
-            raise serializers.ValidationError('roles must be a list of strings.')
+            raise serializers.ValidationError('organizational_roles must be a list of strings.')
         return value
 
 
@@ -87,14 +88,14 @@ class GroupInviteSerializer(serializers.Serializer):
     pending GROUP_INVITE Notification rather than adding the member directly."""
 
     user_id = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), source='user', write_only=True)
-    roles = serializers.ListField(default=list)
+    organizational_roles = serializers.ListField(source='roles', default=list)
 
-    def validate_roles(self, value):
+    def validate_organizational_roles(self, value):
         # A bare ListField (no `child`) skips per-item coercion, so this
         # actually rejects non-string items instead of silently stringifying
         # them the way ListField(child=CharField()) would.
         if not all(isinstance(item, str) for item in value):
-            raise serializers.ValidationError('roles must be a list of strings.')
+            raise serializers.ValidationError('organizational_roles must be a list of strings.')
         return value
 
     def validate(self, attrs):
@@ -148,8 +149,8 @@ class GroupMemberSerializer(serializers.Serializer):
     first_name = serializers.CharField()
     last_name = serializers.CharField()
     email = serializers.EmailField()
-    role = serializers.ChoiceField(choices=['admin', 'member'])
-    roles = serializers.ListField(child=serializers.CharField(), default=list)
+    rosana_role = serializers.ChoiceField(choices=['admin', 'member'])
+    organizational_roles = serializers.ListField(child=serializers.CharField(), default=list)
 
 
 class SetAdminSerializer(serializers.Serializer):

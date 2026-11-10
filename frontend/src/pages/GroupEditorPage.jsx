@@ -216,18 +216,18 @@ export default function GroupEditorPage() {
 
   const selectedMember = members.find((member) => member.id === selectedMemberId) || null
 
-  async function handleSubmitMemberDialog({ userId, role }) {
+  async function handleSubmitMemberDialog({ userId, organizationalRole }) {
     setMemberDialogError('')
     setIsSubmittingMember(true)
     try {
       if (memberDialogMode === 'invite') {
-        await inviteGroupMember(id, { userId, roles: role ? [role] : [] })
+        await inviteGroupMember(id, { userId, organizationalRoles: organizationalRole ? [organizationalRole] : [] })
         setIsMemberDialogOpen(false)
         // The invitee hasn't joined yet -- they still need to accept it from
         // their Notifications page -- so there's no new member to reload.
         setInviteSuccessMessage('Invitation sent.')
       } else {
-        await changeGroupMemberRoles(id, selectedMember.id, role ? [role] : [])
+        await changeGroupMemberRoles(id, selectedMember.id, organizationalRole ? [organizationalRole] : [])
         setIsMemberDialogOpen(false)
         await loadMembers()
       }
@@ -298,9 +298,14 @@ export default function GroupEditorPage() {
     { key: 'name', header: 'Name', sortValue: memberLabel, render: memberLabel },
     { key: 'email', header: 'Email' },
     {
-      key: 'role',
-      header: 'Role',
-      render: (member) => (member.role === 'admin' ? 'Admin' : member.roles.join(', ') || '—'),
+      key: 'rosana_role',
+      header: 'Rosana Role',
+      render: (member) => (member.rosana_role === 'admin' ? 'Admin' : 'Member'),
+    },
+    {
+      key: 'organizational_roles',
+      header: 'Organizational Role',
+      render: (member) => member.organizational_roles.join(', ') || '—',
     },
   ]
 
@@ -428,21 +433,21 @@ export default function GroupEditorPage() {
                 setInviteSuccessMessage('')
                 setIsMemberDialogOpen(true)
               }}
-              disabled={!selectedMember || selectedMember.role === 'admin'}
+              disabled={!selectedMember || selectedMember.rosana_role === 'admin'}
             >
-              Edit Role
+              Edit Organizational Role
             </button>
             <button
               type="button"
               onClick={() => setIsRemoveMemberDialogOpen(true)}
-              disabled={!selectedMember || selectedMember.role === 'admin' || isRemovingMember}
+              disabled={!selectedMember || selectedMember.rosana_role === 'admin' || isRemovingMember}
             >
               Remove
             </button>
             <button
               type="button"
               onClick={() => setIsTransferAdminDialogOpen(true)}
-              disabled={!selectedMember || selectedMember.role === 'admin' || isTransferringAdmin}
+              disabled={!selectedMember || selectedMember.rosana_role === 'admin' || isTransferringAdmin}
             >
               Transfer administration
             </button>
@@ -499,7 +504,7 @@ export default function GroupEditorPage() {
         isOpen={isMemberDialogOpen}
         mode={memberDialogMode}
         memberLabel={selectedMember ? memberLabel(selectedMember) : ''}
-        initialRole={memberDialogMode === 'edit' ? (selectedMember?.roles[0] ?? '') : ''}
+        initialRole={memberDialogMode === 'edit' ? (selectedMember?.organizational_roles[0] ?? '') : ''}
         isBusy={isSubmittingMember}
         error={memberDialogError}
         onSubmit={handleSubmitMemberDialog}

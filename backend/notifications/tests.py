@@ -33,7 +33,7 @@ class GroupInviteTests(NotificationsTestCase):
         group = Group.objects.create(name='Agency', admin=self.admin)
         self.client.force_authenticate(user=self.admin)
         response = self.client.post(
-            self.invite_url(group), {'user_id': self.other.pk, 'roles': ['Coordinator']}, format='json'
+            self.invite_url(group), {'user_id': self.other.pk, 'organizational_roles': ['Coordinator']}, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['notification_type'], 'group_invite')
@@ -76,12 +76,12 @@ class GroupInviteTests(NotificationsTestCase):
         self.client.force_authenticate(user=self.admin)
 
         response = self.client.post(
-            self.invite_url(group), {'user_id': self.other.pk, 'roles': 'Coordinator'}, format='json'
+            self.invite_url(group), {'user_id': self.other.pk, 'organizational_roles': 'Coordinator'}, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
         response = self.client.post(
-            self.invite_url(group), {'user_id': self.other.pk, 'roles': [1, 2]}, format='json'
+            self.invite_url(group), {'user_id': self.other.pk, 'organizational_roles': [1, 2]}, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -151,7 +151,7 @@ class NotificationAcceptDeclineTests(NotificationsTestCase):
     def test_invitee_can_accept_invite_creating_membership_with_roles(self):
         group = Group.objects.create(name='Agency', admin=self.admin)
         self.client.force_authenticate(user=self.admin)
-        self.client.post(self.invite_url(group), {'user_id': self.other.pk, 'roles': ['Analyst']}, format='json')
+        self.client.post(self.invite_url(group), {'user_id': self.other.pk, 'organizational_roles': ['Analyst']}, format='json')
         notification = Notification.objects.get(group=group, user=self.other)
 
         self.client.force_authenticate(user=self.other)

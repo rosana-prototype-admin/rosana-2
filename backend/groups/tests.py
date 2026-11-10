@@ -279,7 +279,7 @@ class MembershipTests(GroupsTestCase):
 
         self.client.force_authenticate(user=self.admin)
         response = self.client.patch(
-            self.member_detail_url(group, self.other), {'roles': ['Analyst', 'Lead']}, format='json'
+            self.member_detail_url(group, self.other), {'organizational_roles': ['Analyst', 'Lead']}, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         membership = Membership.objects.get(group=group, user=self.other)
@@ -291,7 +291,7 @@ class MembershipTests(GroupsTestCase):
 
         self.client.force_authenticate(user=self.admin)
         response = self.client.patch(
-            self.member_detail_url(group, self.admin), {'roles': ['Lead']}, format='json'
+            self.member_detail_url(group, self.admin), {'organizational_roles': ['Lead']}, format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -323,7 +323,7 @@ class MembershipTests(GroupsTestCase):
         response = self.client.get(self.members_url(parent))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
-        roles_by_username = {row['username']: row['role'] for row in response.data}
+        roles_by_username = {row['username']: row['rosana_role'] for row in response.data}
         self.assertEqual(roles_by_username, {'admin': 'admin', 'other': 'member'})
 
 
