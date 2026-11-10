@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { deleteGroup, listGroupMembers, listMyGroups, updateGroupJcodes } from '../api/groups'
+import { deleteGroup, listGroupMembers, listMyGroups, restoreGroup, updateGroupJcodes } from '../api/groups'
 import { listJcodes } from '../api/jcodes'
 import ConfirmDialog from '../components/ConfirmDialog'
 import DataTable from '../components/DataTable'
@@ -25,6 +25,7 @@ export default function GroupsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
+  const [showArchived, setShowArchived] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
   const [members, setMembers] = useState([])
   const [isLoadingMembers, setIsLoadingMembers] = useState(false)
@@ -43,7 +44,7 @@ export default function GroupsPage() {
 
   const loadGroups = useCallback(async () => {
     try {
-      const data = await listMyGroups()
+      const data = await listMyGroups(showArchived)
       setGroups(data)
       setSelectedId((current) => (data.some((group) => group.id === current) ? current : null))
       setError('')
@@ -52,7 +53,7 @@ export default function GroupsPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [showArchived])
 
   useEffect(() => {
     let cancelled = false
@@ -66,7 +67,7 @@ export default function GroupsPage() {
   }, [loadGroups])
 
   const selectedGroup = groups.find((group) => group.id === selectedId) || null
-  const isSelectedGroupAdmin = selectedGroup?.user_role === 'admin' || user?.is_staff
+  const isSelectedGroupAdmin = !selectedGroup?.archived_at && (selectedGroup?.user_role === 'admin' || user?.is_staff)
   const assignedJcodes = useMemo(() => selectedGroup?.jcodes || [], [selectedGroup])
 
   useEffect(() => {
@@ -152,6 +153,17 @@ export default function GroupsPage() {
     }
   }
 
+  async function handleRestore() {
+    if (!selectedGroup) return
+    setError('')
+    try {
+      await restoreGroup(selectedGroup.id)
+      await loadGroups()
+    } catch {
+      setError('Unable to restore the group. Please try again.')
+    }
+  }
+
   async function saveJcodes(jcodeIds) {
     if (!selectedGroup) return
     setError('')
@@ -197,7 +209,7 @@ export default function GroupsPage() {
   const groupColumns = [
     { key: 'name', header: 'Group name' },
     { key: 'admin', header: 'Admin', sortValue: (group) => displayUserName(group.admin), render: (group) => displayUserName(group.admin) },
-    { key: 'user_role', header: "User's role", render: (group) => group.user_role === 'admin' ? 'Admin' : 'Member' },
+    { key: 'user_role', header: "User's role", render: (group) => group.archived_at ? 'Archived' : (group.user_role === 'admin' ? 'Admin' : 'Member') },
   ]
 
   const memberColumns = [
@@ -217,6 +229,12 @@ export default function GroupsPage() {
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
+        {user?.is_staff && (
+          <label className="groups-archived-toggle">
+            <input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />
+            Show archived
+          </label>
+        )}
       </div>
 
       {error && <p className="form-error" role="alert">{error}</p>}
@@ -230,8 +248,11 @@ export default function GroupsPage() {
           onClick={() => setIsDeleteDialogOpen(true)}
           disabled={!isSelectedGroupAdmin || isDeleting}
         >
-          Delete
+          Archive
         </button>
+        {selectedGroup?.archived_at && user?.is_staff && (
+          <button type="button" onClick={handleRestore}>Restore</button>
+        )}
       </div>
 
       {isLoading ? (
@@ -360,9 +381,9 @@ export default function GroupsPage() {
 
       <ConfirmDialog
         isOpen={isDeleteDialogOpen}
-        title="Delete group?"
-        message={`This will permanently delete "${selectedGroup?.name}" along with all of its subgroups and memberships. This cannot be undone.`}
-        confirmLabel="Delete"
+        title="Archive group?"
+        message={`This will archive "${selectedGroup?.name}" and its subgroups. Members and historical data will be preserved.`}
+        confirmLabel="Archive"
         isDangerous
         isBusy={isDeleting}
         onConfirm={handleConfirmDelete}

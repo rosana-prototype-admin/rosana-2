@@ -17,10 +17,10 @@ class GroupSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Group
-        fields = ['id', 'name', 'parent', 'admin', 'user_role', 'members', 'jcodes', 'created_at', 'modified_at']
+        fields = ['id', 'name', 'parent', 'admin', 'user_role', 'members', 'jcodes', 'created_at', 'modified_at', 'archived_at', 'archived_by']
         # admin is fully read-only here -- only ever set by GroupViewSet.perform_create
         # (on the initial group) or the set-admin action (on reassignment), never a plain PATCH body.
-        read_only_fields = ['id', 'admin', 'members', 'jcodes', 'created_at', 'modified_at']
+        read_only_fields = ['id', 'admin', 'members', 'jcodes', 'created_at', 'modified_at', 'archived_at', 'archived_by']
 
     def get_members(self, obj):
         return UserSearchResultSerializer(obj.effective_members(), many=True).data

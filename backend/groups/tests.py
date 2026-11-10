@@ -1,4 +1,5 @@
 from django.db import IntegrityError, transaction
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -134,14 +135,40 @@ class GroupCrudTests(GroupsTestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['name'], 'City of Raleigh DOT')
 
-    def test_deleting_group_cascades_to_subgroups(self):
+    def test_deleting_group_archives_group_and_subgroups(self):
         parent = Group.objects.create(name='Parent', admin=self.admin)
         child = Group.objects.create(name='Child', parent=parent, admin=self.admin)
 
         self.client.force_authenticate(user=self.admin)
         response = self.client.delete(f'/api/groups/{parent.pk}/')
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(Group.objects.filter(pk=child.pk).exists())
+        parent.refresh_from_db()
+        child.refresh_from_db()
+        self.assertIsNotNone(parent.archived_at)
+        self.assertIsNotNone(child.archived_at)
+
+        response = self.client.get('/api/groups/mine/')
+        self.assertEqual(response.data, [])
+
+    def test_platform_admin_can_restore_archived_group_tree(self):
+        parent = Group.objects.create(name='Parent', admin=self.other)
+        child = Group.objects.create(name='Child', parent=parent, admin=self.other)
+        parent.archived_at = timezone.now()
+        parent.archived_by = self.other
+        parent.save(update_fields=['archived_at', 'archived_by'])
+        child.archived_at = parent.archived_at
+        child.archived_by = self.other
+        child.save(update_fields=['archived_at', 'archived_by'])
+
+        self.admin.is_staff = True
+        self.admin.save(update_fields=['is_staff'])
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(f'/api/groups/{parent.pk}/restore/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        parent.refresh_from_db()
+        child.refresh_from_db()
+        self.assertIsNone(parent.archived_at)
+        self.assertIsNone(child.archived_at)
 
     def test_non_admin_cannot_update_group(self):
         group = Group.objects.create(name='Parent', admin=self.other)

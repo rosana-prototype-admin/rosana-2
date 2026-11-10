@@ -30,6 +30,14 @@ class Group(models.Model):
         on_delete=models.PROTECT,
         related_name='administered_groups',
     )
+    archived_at = models.DateTimeField(null=True, blank=True)
+    archived_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='archived_groups',
+    )
     jcodes = models.ManyToManyField('geo.Jcode', related_name='groups', blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)

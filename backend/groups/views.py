@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.db.models import Q
 from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
@@ -6,6 +7,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
 from notifications.serializers import NotificationSerializer
+from accounts.audit import record_admin_event
 
 from .models import Group, Membership
 from .permissions import GroupAccessPermission
@@ -47,6 +49,9 @@ class GroupViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
+        include_archived = self.request.query_params.get('include_archived') == 'true'
+        if not include_archived or not (self.request.user.is_staff and self.request.user.is_active):
+            queryset = queryset.filter(archived_at__isnull=True)
         q = self.request.query_params.get('q')
         if q:
             queryset = queryset.filter(name__icontains=q)
@@ -61,6 +66,28 @@ class GroupViewSet(viewsets.ModelViewSet):
                 Q(admin_id=request.user.pk) | Q(memberships__user_id=request.user.pk),
             ).distinct()
         return Response(self.get_serializer(queryset, many=True).data)
+
+    def destroy(self, request, *args, **kwargs):
+        """Keep DELETE as a backwards-compatible archive operation."""
+        group = self.get_object()
+        now = timezone.now()
+        group_ids = group.descendant_group_ids()
+        Group.objects.filter(pk__in=group_ids, archived_at__isnull=True).update(
+            archived_at=now,
+            archived_by=request.user,
+        )
+        record_admin_event(request, 'group.archived', group, after={'archived_at': now.isoformat()})
+        return Response(status=204)
+
+    @action(detail=True, methods=['post'], url_path='restore')
+    def restore(self, request, pk=None):
+        if not request.user.is_staff or not request.user.is_active:
+            return Response({'detail': 'Only platform administrators can restore archived groups.'}, status=403)
+        group = get_object_or_404(Group.objects.all(), pk=pk)
+        group_ids = group.descendant_group_ids()
+        Group.objects.filter(pk__in=group_ids).update(archived_at=None, archived_by=None)
+        record_admin_event(request, 'group.restored', group, after={'archived_at': None})
+        return Response(self.get_serializer(group).data)
 
     def perform_create(self, serializer):
         parent = serializer.validated_data.get('parent')

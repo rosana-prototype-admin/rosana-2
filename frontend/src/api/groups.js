@@ -5,8 +5,10 @@ export async function listGroups() {
   return data
 }
 
-export async function listMyGroups() {
-  const { data } = await client.get('/groups/mine/')
+export async function listMyGroups(includeArchived = false) {
+  const { data } = await client.get('/groups/mine/', {
+    params: includeArchived ? { include_archived: 'true' } : {},
+  })
   return data
 }
 
@@ -40,6 +42,11 @@ export async function updateGroup(id, payload) {
 
 export async function deleteGroup(id) {
   await client.delete(`/groups/${id}/`)
+}
+
+export async function restoreGroup(id) {
+  const { data } = await client.post(`/groups/${id}/restore/`)
+  return data
 }
 
 // Sends a pending invitation (Notification) rather than adding the member
