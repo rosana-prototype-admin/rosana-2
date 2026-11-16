@@ -42,6 +42,60 @@ class GroupInviteTests(NotificationsTestCase):
         notification = Notification.objects.get(group=group, user=self.other)
         self.assertEqual(notification.roles, ['Coordinator'])
 
+    def test_invite_permissions_are_copied_when_accepted(self):
+        group = Group.objects.create(name='Agency', admin=self.admin)
+        requested_permissions = {'comment_existing_resources': True, 'create_modify_project': True}
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            self.invite_url(group),
+            {
+                'user_id': self.other.pk,
+                'organizational_roles': ['Analyst'],
+                'permissions': requested_permissions,
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        notification = Notification.objects.get(group=group, user=self.other)
+        self.assertTrue(notification.permissions['comment_existing_resources'])
+
+        self.client.force_authenticate(user=self.other)
+        self.client.post(self.accept_url(notification))
+        membership = Membership.objects.get(group=group, user=self.other)
+        self.assertEqual(membership.permissions['comment_existing_resources'], True)
+        self.assertEqual(membership.permissions['create_modify_project'], True)
+        self.assertEqual(membership.permissions['delete_project'], False)
+
+    def test_member_with_add_and_change_permissions_can_invite(self):
+        group = Group.objects.create(name='Agency', admin=self.admin)
+        inviter = User.objects.create_user(username='inviter', email='inviter@example.com', password='pw')
+        invitee = User.objects.create_user(username='invitee', email='invitee@example.com', password='pw')
+        Membership.objects.create(
+            user=inviter,
+            group=group,
+            permissions={'add_new_user': True, 'change_user_permissions': True},
+        )
+        self.client.force_authenticate(user=inviter)
+        response = self.client.post(
+            self.invite_url(group),
+            {'user_id': invitee.pk, 'permissions': {'comment_existing_resources': True}},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_member_without_change_permission_cannot_assign_permissions(self):
+        group = Group.objects.create(name='Agency', admin=self.admin)
+        inviter = User.objects.create_user(username='inviter', email='inviter@example.com', password='pw')
+        invitee = User.objects.create_user(username='invitee', email='invitee@example.com', password='pw')
+        Membership.objects.create(user=inviter, group=group, permissions={'add_new_user': True})
+        self.client.force_authenticate(user=inviter)
+        response = self.client.post(
+            self.invite_url(group),
+            {'user_id': invitee.pk, 'permissions': {'comment_existing_resources': True}},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_non_admin_cannot_invite(self):
         group = Group.objects.create(name='Agency', admin=self.other)
         self.client.force_authenticate(user=self.admin)
@@ -197,6 +251,22 @@ class NotificationAcceptDeclineTests(NotificationsTestCase):
         membership = Membership.objects.get(group=group, user=self.other)
         # Join requests never carry roles.
         self.assertEqual(membership.roles, [])
+        self.assertFalse(any(membership.permissions.values()))
+
+    def test_member_with_approve_permission_can_accept_join_request(self):
+        group = Group.objects.create(name='Agency', admin=self.admin)
+        approver = User.objects.create_user(username='approver', email='approver@example.com', password='pw')
+        requester = User.objects.create_user(username='requester', email='requester@example.com', password='pw')
+        Membership.objects.create(user=approver, group=group, permissions={'approve_new_user': True})
+        self.client.force_authenticate(user=requester)
+        self.client.post(self.request_to_join_url(group))
+        notification = Notification.objects.get(group=group, user=requester)
+
+        self.client.force_authenticate(user=approver)
+        response = self.client.post(self.accept_url(notification))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        membership = Membership.objects.get(group=group, user=requester)
+        self.assertFalse(any(membership.permissions.values()))
 
     def test_admin_can_decline_join_request(self):
         group = Group.objects.create(name='Agency', admin=self.admin)

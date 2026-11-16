@@ -7,6 +7,7 @@ from geo.serializers import JcodeSerializer
 from notifications.models import Notification
 
 from .models import Group, Membership, group_creates_cycle
+from .permissions import GROUP_PERMISSION_CODES, default_group_permissions, normalize_group_permissions
 
 
 class GroupSerializer(serializers.ModelSerializer):
@@ -37,6 +38,9 @@ class GroupSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         parent = attrs.get('parent', getattr(self.instance, 'parent', None))
+        if self.instance is not None and 'parent' in attrs and attrs['parent'] != self.instance.parent:
+            if self.context['request'].user.pk != self.instance.admin_id:
+                raise serializers.ValidationError({'parent': 'Only the group administrator can change the parent group.'})
         if self.instance is not None and parent is not None:
             if group_creates_cycle(self.instance.pk, parent):
                 raise serializers.ValidationError({'parent': 'A group cannot be its own ancestor.'})
@@ -57,16 +61,23 @@ class MembershipSerializer(serializers.ModelSerializer):
     user = UserSearchResultSerializer(read_only=True)
     group = serializers.PrimaryKeyRelatedField(read_only=True)
     organizational_roles = serializers.ListField(source='roles', default=list)
+    permissions = serializers.JSONField(default=default_group_permissions)
 
     class Meta:
         model = Membership
-        fields = ['id', 'group', 'user', 'organizational_roles', 'created_at', 'modified_at']
+        fields = ['id', 'group', 'user', 'organizational_roles', 'permissions', 'created_at', 'modified_at']
         read_only_fields = ['id', 'group', 'user', 'created_at', 'modified_at']
 
     def validate_organizational_roles(self, value):
         if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
             raise serializers.ValidationError('organizational_roles must be a list of strings.')
         return value
+
+    def validate_permissions(self, value):
+        try:
+            return normalize_group_permissions(value)
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc))
 
 
 def _validate_new_group_member(group, user):
@@ -89,6 +100,7 @@ class GroupInviteSerializer(serializers.Serializer):
 
     user_id = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), source='user', write_only=True)
     organizational_roles = serializers.ListField(source='roles', default=list)
+    permissions = serializers.JSONField(default=default_group_permissions)
 
     def validate_organizational_roles(self, value):
         # A bare ListField (no `child`) skips per-item coercion, so this
@@ -97,6 +109,12 @@ class GroupInviteSerializer(serializers.Serializer):
         if not all(isinstance(item, str) for item in value):
             raise serializers.ValidationError('organizational_roles must be a list of strings.')
         return value
+
+    def validate_permissions(self, value):
+        try:
+            return normalize_group_permissions(value)
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc))
 
     def validate(self, attrs):
         group = self.context['group']
@@ -115,6 +133,7 @@ class GroupInviteSerializer(serializers.Serializer):
             user=self.validated_data['user'],
             notification_type=Notification.Type.GROUP_INVITE,
             roles=self.validated_data['roles'],
+            permissions=self.validated_data['permissions'],
         )
 
 
@@ -151,6 +170,14 @@ class GroupMemberSerializer(serializers.Serializer):
     email = serializers.EmailField()
     rosana_role = serializers.ChoiceField(choices=['admin', 'member'])
     organizational_roles = serializers.ListField(child=serializers.CharField(), default=list)
+    permissions = serializers.JSONField()
+    permissions_locked = serializers.BooleanField(default=False)
+
+
+class GroupPermissionDefinitionSerializer(serializers.Serializer):
+    code = serializers.ChoiceField(choices=GROUP_PERMISSION_CODES)
+    label = serializers.CharField()
+    category = serializers.CharField()
 
 
 class SetAdminSerializer(serializers.Serializer):

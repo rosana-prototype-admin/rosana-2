@@ -44,6 +44,11 @@ These endpoints do not require authentication:
 - `POST /api/groups/<id>/restore/` restores an archived Group tree for platform administrators.
 - `POST /api/groups/<id>/set-admin/` transfers administration to an active, email-verified group member. The outgoing administrator remains a regular member, and the transfer is recorded in the audit log.
 - Group member responses use `rosana_role` for Rosana's system designation (`admin` or `member`) and `organizational_roles` for free-form organizational titles.
+- `GET /api/groups/permission-definitions/` returns the categorized group-permission catalog.
+- Group member responses include a boolean `permissions` map. Group administrators resolve to all permissions and have `permissions_locked: true`.
+- Group invitations may include `permissions`; those permissions are copied to the membership when accepted. Join requests never carry permissions and create members with all permissions disabled.
+- A member needs `add_new_user` to invite users, `change_user_permissions` to assign or edit permissions, `delete_user` to remove members, and `approve_new_user` to approve join requests.
+- Group permissions are enforced for group renaming, Opportunity/Project/Site/Strategy create and modify/delete actions, comments, comment moderation, and custom CMF create/modify/delete actions. Legacy direct Opportunity roles remain supported for records not accessed through a Group membership.
 - Notifications: `/api/notifications/`
 - Comments and votes: `/api/projects/<id>/comments/` and `/api/comments/`
 - Focus areas and intervention types: `/api/focus-areas/` and `/api/intervention-types/`

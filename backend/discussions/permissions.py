@@ -3,6 +3,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import BasePermission
 
 from projects.models import Opportunity, Project
+from groups.permissions import has_opportunity_permission
 from projects.permissions import can_read
 
 
@@ -28,7 +29,10 @@ class CommentAccessPermission(BasePermission):
         if view.action in self.EDIT_ONLY_ACTIONS:
             return obj.author_id == request.user.pk
         if view.action == 'destroy':
-            return obj.author_id == request.user.pk or opportunity.manager_id == request.user.pk
+            return obj.author_id == request.user.pk or (
+                opportunity.manager_id == request.user.pk
+                and has_opportunity_permission(request.user, opportunity, 'delete_other_comments')
+            )
         return True
 
 
@@ -51,4 +55,8 @@ class CommentAncestorScopedMixin:
         project = self.get_ancestor()
         if not project.comments_enabled:
             raise PermissionDenied('Comments are disabled for this project.')
+        if not has_opportunity_permission(
+            self.request.user, project.opportunity, 'comment_existing_resources'
+        ):
+            raise PermissionDenied('You do not have permission to comment on this Opportunity.')
         serializer.save(project=project, author=self.request.user)

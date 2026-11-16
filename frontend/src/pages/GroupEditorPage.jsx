@@ -6,6 +6,7 @@ import {
   getGroup,
   inviteGroupMember,
   listGroupMembers,
+  listGroupPermissionDefinitions,
   listGroups,
   removeGroupMember,
   setGroupAdmin,
@@ -58,6 +59,7 @@ export default function GroupEditorPage() {
   const [savedAt, setSavedAt] = useState(null)
 
   const [members, setMembers] = useState([])
+  const [permissionDefinitions, setPermissionDefinitions] = useState([])
   const [isLoadingMembers, setIsLoadingMembers] = useState(false)
   const [memberError, setMemberError] = useState('')
   const [inviteSuccessMessage, setInviteSuccessMessage] = useState('')
@@ -91,6 +93,10 @@ export default function GroupEditorPage() {
       setIsLoadingMembers(false)
     }
   }, [id])
+
+  useEffect(() => {
+    listGroupPermissionDefinitions().then(setPermissionDefinitions).catch(() => setPermissionDefinitions([]))
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -215,19 +221,33 @@ export default function GroupEditorPage() {
   }, [isDirty])
 
   const selectedMember = members.find((member) => member.id === selectedMemberId) || null
+  const currentMember = members.find((member) => member.id === user?.id) || null
+  const canEditPermissions = Boolean(canManage || currentMember?.permissions?.change_user_permissions)
+  const canInvite = Boolean(canManage || currentMember?.permissions?.add_new_user)
+  const canDeleteMembers = Boolean(canManage || currentMember?.permissions?.delete_user)
+  const blankPermissions = useMemo(() => ({}), [])
 
-  async function handleSubmitMemberDialog({ userId, organizationalRole }) {
+  async function handleSubmitMemberDialog({ userId, organizationalRole, permissions }) {
     setMemberDialogError('')
     setIsSubmittingMember(true)
     try {
       if (memberDialogMode === 'invite') {
-        await inviteGroupMember(id, { userId, organizationalRoles: organizationalRole ? [organizationalRole] : [] })
+        await inviteGroupMember(id, {
+          userId,
+          organizationalRoles: organizationalRole ? [organizationalRole] : [],
+          permissions: canEditPermissions ? permissions : {},
+        })
         setIsMemberDialogOpen(false)
         // The invitee hasn't joined yet -- they still need to accept it from
         // their Notifications page -- so there's no new member to reload.
         setInviteSuccessMessage('Invitation sent.')
       } else {
-        await changeGroupMemberRoles(id, selectedMember.id, organizationalRole ? [organizationalRole] : [])
+        await changeGroupMemberRoles(
+          id,
+          selectedMember.id,
+          organizationalRole ? [organizationalRole] : [],
+          canEditPermissions ? permissions : {},
+        )
         setIsMemberDialogOpen(false)
         await loadMembers()
       }
@@ -393,7 +413,7 @@ export default function GroupEditorPage() {
           </div>
         </dl>
 
-        {canManage && (
+        {(canInvite || canEditPermissions || canManage) && (
           <button type="submit" className="editor-save" disabled={!isDirty || isSaving}>
             {isSaving ? 'Saving…' : 'Save'}
           </button>
@@ -422,6 +442,7 @@ export default function GroupEditorPage() {
                 setInviteSuccessMessage('')
                 setIsMemberDialogOpen(true)
               }}
+              disabled={!canInvite}
             >
               Invite User
             </button>
@@ -433,14 +454,14 @@ export default function GroupEditorPage() {
                 setInviteSuccessMessage('')
                 setIsMemberDialogOpen(true)
               }}
-              disabled={!selectedMember || selectedMember.rosana_role === 'admin'}
+              disabled={!selectedMember || selectedMember.rosana_role === 'admin' || !canEditPermissions}
             >
               Edit Organizational Role
             </button>
             <button
               type="button"
               onClick={() => setIsRemoveMemberDialogOpen(true)}
-              disabled={!selectedMember || selectedMember.rosana_role === 'admin' || isRemovingMember}
+              disabled={!selectedMember || selectedMember.rosana_role === 'admin' || isRemovingMember || !canDeleteMembers}
             >
               Remove
             </button>
@@ -505,6 +526,10 @@ export default function GroupEditorPage() {
         mode={memberDialogMode}
         memberLabel={selectedMember ? memberLabel(selectedMember) : ''}
         initialRole={memberDialogMode === 'edit' ? (selectedMember?.organizational_roles[0] ?? '') : ''}
+        initialPermissions={memberDialogMode === 'edit' ? (selectedMember?.permissions ?? blankPermissions) : blankPermissions}
+        permissionDefinitions={permissionDefinitions}
+        showPermissions={canEditPermissions}
+        permissionsLocked={memberDialogMode === 'edit' && selectedMember?.permissions_locked}
         isBusy={isSubmittingMember}
         error={memberDialogError}
         onSubmit={handleSubmitMemberDialog}

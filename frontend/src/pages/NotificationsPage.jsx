@@ -10,7 +10,9 @@ function userLabel(user) {
 
 function describe(notification) {
   if (notification.notification_type === 'group_invite') {
-    const roleSuffix = notification.roles.length > 0 ? ` as ${notification.roles.join(', ')}` : ''
+    const roleSuffix = notification.organizational_roles.length > 0
+      ? ` as ${notification.organizational_roles.join(', ')}`
+      : ''
     return `You've been invited to join "${notification.group.name}"${roleSuffix}.`
   }
   return `${userLabel(notification.user)} requested to join "${notification.group.name}".`

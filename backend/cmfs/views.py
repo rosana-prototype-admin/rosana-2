@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from .models import CMF, CMFUserPermission
 from .config import CMF_FILTER_CONFIG, CMF_LOWER_LIMIT, CMF_MATH_CONFIG, CMF_MOD_CODE_OPTIONS, CMF_UPPER_LIMIT
 from .permissions import CMFAccessPermission
+from groups.permissions import has_any_group_permission, user_has_any_group_membership
 from .serializers import CMFSerializer
 
 
@@ -32,6 +33,11 @@ class CMFViewSet(viewsets.ModelViewSet):
         ).distinct()
 
     def perform_create(self, serializer):
+        if user_has_any_group_membership(self.request.user) and not has_any_group_permission(
+            self.request.user, 'create_modify_cmf'
+        ):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('You do not have permission to create custom CMFs.')
         serializer.save(author=self.request.user)
 
     @action(detail=False, methods=['get'])

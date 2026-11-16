@@ -18,6 +18,10 @@ export default function GroupMemberDialog({
   mode,
   memberLabel,
   initialRole = '',
+  initialPermissions = {},
+  permissionDefinitions = [],
+  showPermissions = false,
+  permissionsLocked = false,
   isBusy = false,
   error,
   onSubmit,
@@ -26,6 +30,7 @@ export default function GroupMemberDialog({
   const [query, setQuery] = useState('')
   const [selectedUser, setSelectedUser] = useState(null)
   const [organizationalRole, setOrganizationalRole] = useState(initialRole)
+  const [permissions, setPermissions] = useState(initialPermissions)
 
   useEffect(() => {
     function resetForm() {
@@ -33,10 +38,11 @@ export default function GroupMemberDialog({
         setQuery('')
         setSelectedUser(null)
         setOrganizationalRole(initialRole)
+        setPermissions(initialPermissions)
       }
     }
     resetForm()
-  }, [isOpen, initialRole])
+  }, [isOpen, initialRole, initialPermissions])
 
   useEffect(() => {
     if (!isOpen) return undefined
@@ -57,8 +63,8 @@ export default function GroupMemberDialog({
   function handleSubmit(event) {
     event.preventDefault()
     onSubmit(mode === 'invite'
-      ? { userId: selectedUser.id, organizationalRole: organizationalRole.trim() }
-      : { organizationalRole: organizationalRole.trim() })
+      ? { userId: selectedUser.id, organizationalRole: organizationalRole.trim(), permissions }
+      : { organizationalRole: organizationalRole.trim(), permissions })
   }
 
   return (
@@ -99,6 +105,37 @@ export default function GroupMemberDialog({
             placeholder="e.g. Coordinator"
           />
         </label>
+
+        {showPermissions && (
+          <fieldset className="editor-field" disabled={permissionsLocked}>
+            <legend className="label">Permissions</legend>
+            {Object.entries(
+              permissionDefinitions.reduce((categories, definition) => {
+                const category = categories[definition.category] || []
+                category.push(definition)
+                return { ...categories, [definition.category]: category }
+              }, {}),
+            ).map(([category, definitions]) => (
+              <div key={category} className="permission-group">
+                <strong>{category}</strong>
+                {definitions.map((definition) => (
+                  <label key={definition.code} className="permission-option">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(permissions[definition.code])}
+                      onChange={(event) => setPermissions((current) => ({
+                        ...current,
+                        [definition.code]: event.target.checked,
+                      }))}
+                    />
+                    {definition.label}
+                  </label>
+                ))}
+              </div>
+            ))}
+            {permissionsLocked && <span className="text-sm">The group administrator always has all permissions.</span>}
+          </fieldset>
+        )}
 
         <div className="dialog-actions">
           <button type="button" className="dialog-button dialog-button-cancel" onClick={onCancel} disabled={isBusy}>

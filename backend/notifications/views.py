@@ -6,6 +6,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from groups.models import Membership
+from groups.permissions import has_group_permission
 
 from .models import Notification
 from .serializers import NotificationSerializer
@@ -23,7 +24,12 @@ class NotificationViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, view
         return Notification.objects.filter(
             Q(notification_type=Notification.Type.GROUP_INVITE, user=user)
             | Q(notification_type=Notification.Type.GROUP_JOIN_REQUEST, group__admin=user)
-        ).select_related('group', 'group__admin', 'user')
+            | Q(
+                notification_type=Notification.Type.GROUP_JOIN_REQUEST,
+                group__memberships__user=user,
+                group__memberships__permissions__approve_new_user=True,
+            )
+        ).select_related('group', 'group__admin', 'user').distinct()
 
     def _resolve(self, request, pk, new_status):
         notification = get_object_or_404(self.get_queryset(), pk=pk)
@@ -32,6 +38,10 @@ class NotificationViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, view
 
         if new_status == Notification.Status.ACCEPTED:
             group, target_user = notification.group, notification.user
+            if notification.notification_type == Notification.Type.GROUP_JOIN_REQUEST and not has_group_permission(
+                request.user, group, 'approve_new_user'
+            ):
+                raise ValidationError('You do not have permission to approve new users in this group.')
             # Re-validate at accept time -- group membership may have
             # changed since this notification was created (e.g. the user
             # already joined via the other pending notification type).
@@ -42,7 +52,8 @@ class NotificationViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, view
             ).exists():
                 raise ValidationError('This user must be a member of the parent group before joining this subgroup.')
             roles = notification.roles if notification.notification_type == Notification.Type.GROUP_INVITE else []
-            Membership.objects.create(group=group, user=target_user, roles=roles)
+            group_permissions = notification.permissions if notification.notification_type == Notification.Type.GROUP_INVITE else {}
+            Membership.objects.create(group=group, user=target_user, roles=roles, permissions=group_permissions)
 
         notification.status = new_status
         notification.save(update_fields=['status', 'modified_at'])

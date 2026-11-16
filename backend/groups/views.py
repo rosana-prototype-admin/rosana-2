@@ -11,7 +11,13 @@ from notifications.serializers import NotificationSerializer
 from accounts.audit import record_admin_event
 
 from .models import Group, Membership
-from .permissions import GroupAccessPermission
+from .permissions import (
+    GROUP_PERMISSION_DEFINITIONS,
+    GroupAccessPermission,
+    all_group_permissions,
+    default_group_permissions,
+    has_group_permission,
+)
 from .serializers import (
     GroupInviteSerializer,
     GroupJcodeUpdateSerializer,
@@ -25,7 +31,7 @@ from .serializers import (
 
 def _group_members(group):
     """Flatten group members with system and organizational roles separated."""
-    def _entry(user, rosana_role, organizational_roles=None):
+    def _entry(user, rosana_role, organizational_roles=None, permissions=None, permissions_locked=False):
         return {
             'id': user.id,
             'username': user.username,
@@ -34,15 +40,20 @@ def _group_members(group):
             'email': user.email,
             'rosana_role': rosana_role,
             'organizational_roles': organizational_roles or [],
+            'permissions': permissions if permissions is not None else default_group_permissions(),
+            'permissions_locked': permissions_locked,
         }
 
-    members = [_entry(group.admin, 'admin')]
-    members += [_entry(membership.user, 'member', membership.roles) for membership in group.memberships.select_related('user')]
+    members = [_entry(group.admin, 'admin', permissions=all_group_permissions(), permissions_locked=True)]
+    members += [
+        _entry(membership.user, 'member', membership.roles, membership.permissions)
+        for membership in group.memberships.select_related('user')
+    ]
     return members
 
 
 class GroupViewSet(viewsets.ModelViewSet):
-    """Any authenticated user may read; only a group's admin may write to it (see GroupAccessPermission)."""
+    """Authenticated users may read; writes are controlled by group permissions."""
 
     queryset = Group.objects.select_related('parent', 'admin').prefetch_related('jcodes__country_code')
     serializer_class = GroupSerializer
@@ -104,14 +115,30 @@ class GroupViewSet(viewsets.ModelViewSet):
         group = self.get_object()
         return Response(GroupMemberSerializer(_group_members(group), many=True).data)
 
+    @action(detail=False, methods=['get'], url_path='permission-definitions')
+    def permission_definitions(self, request):
+        return Response(GROUP_PERMISSION_DEFINITIONS)
+
     @action(detail=True, methods=['post'], url_path='invite')
     def invite(self, request, pk=None):
-        # Admin-only (POST is non-safe) via GroupAccessPermission. Creates a
-        # pending invite Notification instead of adding the member directly.
+        # Creates a pending invite Notification instead of adding the member directly.
         group = self.get_object()
+        if not has_group_permission(request.user, group, 'add_new_user'):
+            raise PermissionDenied('You do not have permission to invite users to this group.')
         serializer = GroupInviteSerializer(data=request.data, context={'group': group})
         serializer.is_valid(raise_exception=True)
+        if any(serializer.validated_data['permissions'].values()) and not has_group_permission(
+            request.user, group, 'change_user_permissions'
+        ):
+            raise PermissionDenied('You do not have permission to assign group permissions.')
         notification = serializer.save()
+        record_admin_event(
+            request,
+            'group.invitation_created',
+            notification,
+            after={'user_id': notification.user_id, 'permissions': notification.permissions},
+            group=group,
+        )
         return Response(NotificationSerializer(notification).data, status=201)
 
     @action(detail=True, methods=['post'], url_path='request-to-join')
@@ -128,16 +155,31 @@ class GroupViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['patch', 'delete'], url_path=r'members/(?P<user_id>\d+)')
     def member_detail(self, request, pk=None, user_id=None):
-        group = self.get_object()  # admin-only (PATCH/DELETE are both non-safe)
+        group = self.get_object()
+        if int(user_id) == group.admin_id:
+            if request.method == 'PATCH':
+                raise ValidationError('The group administrator permissions are locked.')
+            raise PermissionDenied('The group administrator cannot be removed.')
         membership = get_object_or_404(Membership, group=group, user_id=user_id)
 
         if request.method == 'DELETE':
+            if not has_group_permission(request.user, group, 'delete_user'):
+                raise PermissionDenied('You do not have permission to remove group members.')
             membership.delete()
             return Response(status=204)
 
+        if not has_group_permission(request.user, group, 'change_user_permissions'):
+            raise PermissionDenied('You do not have permission to edit member permissions.')
         serializer = MembershipSerializer(membership, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        record_admin_event(
+            request,
+            'group.member_permissions_changed',
+            membership,
+            after={'user_id': membership.user_id, 'permissions': membership.permissions},
+            group=group,
+        )
         return Response(GroupMemberSerializer(_group_members(group), many=True).data)
 
     @action(detail=True, methods=['post'], url_path='set-admin')

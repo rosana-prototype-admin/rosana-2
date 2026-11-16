@@ -16,7 +16,11 @@ class CMFApiTests(APITestCase):
             username='other', email='other@example.com', password='pw'
         )
         self.agency = Group.objects.create(name='Agency', admin=self.other_user)
-        Membership.objects.create(user=self.user, group=self.agency)
+        Membership.objects.create(
+            user=self.user,
+            group=self.agency,
+            permissions={'create_modify_cmf': True, 'delete_cmf': True},
+        )
         self.builtin = CMF.objects.create(
             code='all-road-users',
             title='All road users',

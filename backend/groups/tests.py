@@ -189,6 +189,25 @@ class GroupCrudTests(GroupsTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['name'], 'Renamed')
 
+    def test_member_with_organization_permission_can_rename_group(self):
+        group = Group.objects.create(name='Parent', admin=self.admin)
+        Membership.objects.create(
+            user=self.other,
+            group=group,
+            permissions={'change_organization_name': True},
+        )
+        self.client.force_authenticate(user=self.other)
+        response = self.client.patch(f'/api/groups/{group.pk}/', {'name': 'Renamed'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['name'], 'Renamed')
+
+    def test_member_without_organization_permission_cannot_rename_group(self):
+        group = Group.objects.create(name='Parent', admin=self.admin)
+        Membership.objects.create(user=self.other, group=group)
+        self.client.force_authenticate(user=self.other)
+        response = self.client.patch(f'/api/groups/{group.pk}/', {'name': 'Hacked'})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
 
 class GroupCycleTests(GroupsTestCase):
     def test_cannot_reparent_group_to_create_a_cycle(self):
@@ -284,6 +303,68 @@ class MembershipTests(GroupsTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         membership = Membership.objects.get(group=group, user=self.other)
         self.assertEqual(membership.roles, ['Analyst', 'Lead'])
+
+    def test_member_with_permission_can_update_member_permissions(self):
+        group = Group.objects.create(name='Agency', admin=self.admin)
+        editor = User.objects.create_user(username='editor', email='editor@example.com', password='pw')
+        target = User.objects.create_user(username='target', email='target@example.com', password='pw')
+        Membership.objects.create(
+            user=editor,
+            group=group,
+            permissions={'change_user_permissions': True},
+        )
+        Membership.objects.create(user=target, group=group)
+
+        self.client.force_authenticate(user=editor)
+        response = self.client.patch(
+            self.member_detail_url(group, target),
+            {'permissions': {'comment_existing_resources': True}},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        target_membership = Membership.objects.get(group=group, user=target)
+        self.assertTrue(target_membership.permissions['comment_existing_resources'])
+        self.assertFalse(target_membership.permissions['delete_user'])
+
+    def test_member_cannot_edit_permissions_without_change_permission(self):
+        group = Group.objects.create(name='Agency', admin=self.admin)
+        Membership.objects.create(user=self.other, group=group)
+        target = User.objects.create_user(username='target', email='target@example.com', password='pw')
+        Membership.objects.create(user=target, group=group)
+
+        self.client.force_authenticate(user=self.other)
+        response = self.client.patch(
+            self.member_detail_url(group, target),
+            {'permissions': {'comment_existing_resources': True}},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_group_admin_permissions_are_locked(self):
+        group = Group.objects.create(name='Agency', admin=self.admin)
+        Membership.objects.create(
+            user=self.other,
+            group=group,
+            permissions={'change_user_permissions': True},
+        )
+        self.client.force_authenticate(user=self.other)
+        response = self.client.patch(
+            self.member_detail_url(group, self.admin),
+            {'permissions': {}},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_member_response_exposes_permissions_and_locked_admin(self):
+        group = Group.objects.create(name='Agency', admin=self.admin)
+        Membership.objects.create(user=self.other, group=group, permissions={'add_new_user': True})
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get(self.members_url(group))
+        by_username = {member['username']: member for member in response.data}
+        self.assertTrue(by_username['admin']['permissions_locked'])
+        self.assertTrue(all(by_username['admin']['permissions'].values()))
+        self.assertFalse(by_username['other']['permissions_locked'])
+        self.assertTrue(by_username['other']['permissions']['add_new_user'])
 
     def test_non_admin_cannot_update_member_roles(self):
         group = Group.objects.create(name='Agency', admin=self.other)

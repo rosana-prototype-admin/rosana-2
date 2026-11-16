@@ -3,6 +3,8 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from .permissions import default_group_permissions
+
 
 def group_creates_cycle(group_pk, candidate_parent):
     """Would setting candidate_parent as group_pk's parent create a cycle?"""
@@ -82,7 +84,7 @@ class Group(models.Model):
 
 
 class Membership(models.Model):
-    """A user's membership in a Group, with a free-form list of role titles."""
+    """A user's membership in a Group, titles, and explicit permissions."""
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -91,6 +93,7 @@ class Membership(models.Model):
     )
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='memberships')
     roles = models.JSONField(default=list, blank=True)
+    permissions = models.JSONField(default=default_group_permissions, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
 

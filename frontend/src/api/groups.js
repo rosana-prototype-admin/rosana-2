@@ -30,6 +30,11 @@ export async function listGroupMembers(groupId) {
   return data
 }
 
+export async function listGroupPermissionDefinitions() {
+  const { data } = await client.get('/groups/permission-definitions/')
+  return data
+}
+
 export async function createGroup(payload) {
   const { data } = await client.post('/groups/', payload)
   return data
@@ -51,10 +56,11 @@ export async function restoreGroup(id) {
 
 // Sends a pending invitation (Notification) rather than adding the member
 // directly -- the invitee must accept it before a Membership is created.
-export async function inviteGroupMember(groupId, { userId, organizationalRoles }) {
+export async function inviteGroupMember(groupId, { userId, organizationalRoles, permissions }) {
   const { data } = await client.post(`/groups/${groupId}/invite/`, {
     user_id: userId,
     organizational_roles: organizationalRoles,
+    permissions,
   })
   return data
 }
@@ -65,9 +71,10 @@ export async function requestToJoinGroup(groupId) {
   return data
 }
 
-export async function changeGroupMemberRoles(groupId, userId, organizationalRoles) {
+export async function changeGroupMemberRoles(groupId, userId, organizationalRoles, permissions) {
   const { data } = await client.patch(`/groups/${groupId}/members/${userId}/`, {
     organizational_roles: organizationalRoles,
+    permissions,
   })
   return data
 }

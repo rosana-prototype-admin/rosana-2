@@ -7,6 +7,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 
 from projects.models import Opportunity
+from groups.permissions import has_opportunity_permission
 
 from .models import Comment, CommentVote
 from .permissions import CommentAccessPermission, CommentAncestorScopedMixin
@@ -64,8 +65,10 @@ class CommentViewSet(CommentAncestorScopedMixin, viewsets.ModelViewSet):
         # does for its own stricter-than-default bar.
         comment = get_object_or_404(self.get_queryset(), pk=pk)
         opportunity = comment.get_opportunity()
-        if opportunity.manager_id != request.user.pk:
-            raise PermissionDenied('Only the opportunity manager can delete a comment thread.')
+        if opportunity.manager_id != request.user.pk or not has_opportunity_permission(
+            request.user, opportunity, 'delete_other_comments'
+        ):
+            raise PermissionDenied('You do not have permission to delete this comment thread.')
 
         ids = comment.descendant_ids()
         Comment.objects.filter(pk__in=ids, deleted_at__isnull=True).update(

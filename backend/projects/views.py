@@ -16,6 +16,8 @@ from .permissions import (
     StrategyAncestorScopedMixin,
     can_invite,
     can_manage_roles,
+    has_group_permission,
+    user_has_group_membership,
 )
 from .serializers import (
     ChangeMemberRoleSerializer,
@@ -57,6 +59,14 @@ class OpportunityViewSet(viewsets.ModelViewSet):
             .select_related('focus_area', 'specific_focus_area', 'lead_agency', 'manager')
             .prefetch_related('assoc_agencies', 'delegates', 'stakeholders')
         )
+
+    def perform_create(self, serializer):
+        lead_agency = serializer.validated_data['lead_agency']
+        if user_has_group_membership(self.request.user, lead_agency) and not has_group_permission(
+            self.request.user, lead_agency, 'create_modify_opportunity'
+        ):
+            raise PermissionDenied('You do not have permission to create Opportunities for this Group.')
+        serializer.save()
 
     @action(detail=True, methods=['post'])
     def clone(self, request, pk=None):
