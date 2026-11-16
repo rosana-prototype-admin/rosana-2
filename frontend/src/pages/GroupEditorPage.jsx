@@ -105,7 +105,14 @@ export default function GroupEditorPage() {
       setIsLoading(true)
       setLoadError('')
       try {
-        const groupsData = await listGroups()
+        // A new top-level group does not require the existing-group catalog.
+        // Keep the editor usable if that optional parent-picker request fails.
+        let groupsData = []
+        try {
+          groupsData = await listGroups()
+        } catch (err) {
+          if (!isNew) throw err
+        }
         const groupData = isNew
           ? {
             id: null,
@@ -432,7 +439,7 @@ export default function GroupEditorPage() {
         )}
         {inviteSuccessMessage && <p className="form-success text-sm">{inviteSuccessMessage}</p>}
 
-        {canManage && (
+        {(canManage || canInvite || canEditPermissions || canDeleteMembers) && (
           <div className="action-toolbar">
             <button
               type="button"
@@ -468,7 +475,7 @@ export default function GroupEditorPage() {
             <button
               type="button"
               onClick={() => setIsTransferAdminDialogOpen(true)}
-              disabled={!selectedMember || selectedMember.rosana_role === 'admin' || isTransferringAdmin}
+              disabled={!canManage || !selectedMember || selectedMember.rosana_role === 'admin' || isTransferringAdmin}
             >
               Transfer administration
             </button>
