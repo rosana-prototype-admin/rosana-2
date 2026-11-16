@@ -5,6 +5,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
+from accounts.audit import record_admin_event
 from groups.models import Membership
 from groups.permissions import has_group_permission
 
@@ -23,6 +24,7 @@ class NotificationViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, view
         user = self.request.user
         return Notification.objects.filter(
             Q(notification_type=Notification.Type.GROUP_INVITE, user=user)
+            | Q(notification_type=Notification.Type.GROUP_JOIN_REQUEST, user=user)
             | Q(notification_type=Notification.Type.GROUP_JOIN_REQUEST, group__admin=user)
             | Q(
                 notification_type=Notification.Type.GROUP_JOIN_REQUEST,
@@ -35,6 +37,9 @@ class NotificationViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, view
         notification = get_object_or_404(self.get_queryset(), pk=pk)
         if notification.status != Notification.Status.PENDING:
             raise ValidationError('This notification has already been resolved.')
+
+        if notification.notification_type == Notification.Type.GROUP_JOIN_REQUEST and notification.user_id == request.user.pk:
+            raise ValidationError('The requester cannot approve or decline their own join request.')
 
         if new_status == Notification.Status.ACCEPTED:
             group, target_user = notification.group, notification.user
@@ -57,7 +62,14 @@ class NotificationViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, view
 
         notification.status = new_status
         notification.save(update_fields=['status', 'modified_at'])
-        return Response(NotificationSerializer(notification).data)
+        record_admin_event(
+            request,
+            f'group.join_request_{new_status}',
+            notification,
+            after={'status': new_status, 'user_id': notification.user_id},
+            group=notification.group,
+        )
+        return Response(self.get_serializer(notification).data)
 
     @action(detail=True, methods=['post'])
     def accept(self, request, pk=None):
@@ -66,3 +78,23 @@ class NotificationViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, view
     @action(detail=True, methods=['post'])
     def decline(self, request, pk=None):
         return self._resolve(request, pk, Notification.Status.DECLINED)
+
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        notification = get_object_or_404(
+            self.get_queryset(),
+            pk=pk,
+            notification_type=Notification.Type.GROUP_JOIN_REQUEST,
+            user=request.user,
+            status=Notification.Status.PENDING,
+        )
+        notification.status = Notification.Status.CANCELED
+        notification.save(update_fields=['status', 'modified_at'])
+        record_admin_event(
+            request,
+            'group.join_request_canceled',
+            notification,
+            after={'status': Notification.Status.CANCELED, 'user_id': notification.user_id},
+            group=notification.group,
+        )
+        return Response(self.get_serializer(notification).data)

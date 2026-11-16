@@ -14,3 +14,8 @@ export async function declineNotification(id) {
   const { data } = await client.post(`/notifications/${id}/decline/`)
   return data
 }
+
+export async function cancelNotification(id) {
+  const { data } = await client.post(`/notifications/${id}/cancel/`)
+  return data
+}

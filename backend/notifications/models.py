@@ -3,8 +3,6 @@ from django.db import models
 
 from groups.permissions import default_group_permissions
 
-from groups.permissions import default_group_permissions
-
 
 class Notification(models.Model):
     """A pending, accept/decline-able request tied to a Group."""
@@ -17,6 +15,7 @@ class Notification(models.Model):
         PENDING = 'pending', 'Pending'
         ACCEPTED = 'accepted', 'Accepted'
         DECLINED = 'declined', 'Declined'
+        CANCELED = 'canceled', 'Canceled'
 
     notification_type = models.CharField(max_length=32, choices=Type.choices)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
@@ -27,7 +26,6 @@ class Notification(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='group_notifications'
     )
     roles = models.JSONField(default=list, blank=True)  # only meaningful for GROUP_INVITE; applied on accept
-    permissions = models.JSONField(default=default_group_permissions, blank=True)  # only meaningful for GROUP_INVITE
     permissions = models.JSONField(default=default_group_permissions, blank=True)  # only meaningful for GROUP_INVITE
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)

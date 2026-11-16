@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { acceptNotification, declineNotification, listNotifications } from '../api/notifications'
+import { acceptNotification, cancelNotification, declineNotification, listNotifications } from '../api/notifications'
 import { formatDate } from '../utils/formatDate'
 import '../styles/formFeedback.css'
 import './NotificationsPage.css'
@@ -26,6 +26,7 @@ function describe(notification) {
 const STATUS_LABEL = {
   accepted: 'Accepted',
   declined: 'Declined',
+  canceled: 'Canceled',
 }
 
 export default function NotificationsPage() {
@@ -86,6 +87,19 @@ export default function NotificationsPage() {
     }
   }
 
+  async function handleCancel(id) {
+    setBusyId(id)
+    setError('')
+    try {
+      await cancelNotification(id)
+      await load()
+    } catch (err) {
+      setError(err.response?.data?.[0] || 'Unable to cancel. Please try again.')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   return (
     <main className="notifications-page">
       <h1>Notifications</h1>
@@ -108,7 +122,18 @@ export default function NotificationsPage() {
                 <p>{describe(notification)}</p>
                 <span className="notification-date text-sm">{formatDate(notification.created_at)}</span>
               </div>
-              {notification.status === 'pending' ? (
+              {notification.status === 'pending' && notification.is_requester ? (
+                <div className="notification-actions">
+                  <span className="notification-status">Awaiting administrator</span>
+                  <button
+                    type="button"
+                    onClick={() => handleCancel(notification.id)}
+                    disabled={busyId === notification.id}
+                  >
+                    Cancel request
+                  </button>
+                </div>
+              ) : notification.status === 'pending' ? (
                 <div className="notification-actions">
                   <button
                     type="button"

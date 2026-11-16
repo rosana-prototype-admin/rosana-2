@@ -24,6 +24,9 @@ class NotificationsTestCase(APITestCase):
     def decline_url(self, notification):
         return f'/api/notifications/{notification.pk}/decline/'
 
+    def cancel_url(self, notification):
+        return f'/api/notifications/{notification.pk}/cancel/'
+
     def notifications_url(self):
         return '/api/notifications/'
 
@@ -202,6 +205,41 @@ class GroupJoinRequestTests(NotificationsTestCase):
 
 
 class NotificationAcceptDeclineTests(NotificationsTestCase):
+    def test_requester_can_see_and_cancel_their_pending_join_request(self):
+        group = Group.objects.create(name='Agency', admin=self.admin)
+        self.client.force_authenticate(user=self.other)
+        self.client.post(self.request_to_join_url(group))
+        notification = Notification.objects.get(group=group, user=self.other)
+
+        response = self.client.get(self.notifications_url())
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertTrue(response.data[0]['is_requester'])
+
+        response = self.client.post(self.cancel_url(notification))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['status'], 'canceled')
+        notification.refresh_from_db()
+        self.assertEqual(notification.status, Notification.Status.CANCELED)
+
+    def test_requester_cannot_accept_or_decline_their_own_join_request(self):
+        group = Group.objects.create(name='Agency', admin=self.admin)
+        self.client.force_authenticate(user=self.other)
+        self.client.post(self.request_to_join_url(group))
+        notification = Notification.objects.get(group=group, user=self.other)
+
+        self.assertEqual(self.client.post(self.accept_url(notification)).status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(self.client.post(self.decline_url(notification)).status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_only_requester_can_cancel_join_request(self):
+        group = Group.objects.create(name='Agency', admin=self.admin)
+        self.client.force_authenticate(user=self.other)
+        self.client.post(self.request_to_join_url(group))
+        notification = Notification.objects.get(group=group, user=self.other)
+
+        self.client.force_authenticate(user=self.admin)
+        self.assertEqual(self.client.post(self.cancel_url(notification)).status_code, status.HTTP_404_NOT_FOUND)
+
     def test_invitee_can_accept_invite_creating_membership_with_roles(self):
         group = Group.objects.create(name='Agency', admin=self.admin)
         self.client.force_authenticate(user=self.admin)
@@ -285,10 +323,9 @@ class NotificationAcceptDeclineTests(NotificationsTestCase):
         self.client.post(self.request_to_join_url(group))
         notification = Notification.objects.get(group=group, user=self.other)
 
-        # self.other is the requester, not the group admin -- not the
-        # recipient of their own join request notification.
+        # self.other can see their own request, but cannot approve it.
         response = self.client.post(self.accept_url(notification))
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_join_request_recipient_follows_admin_reassignment(self):
         group = Group.objects.create(name='Agency', admin=self.admin)
