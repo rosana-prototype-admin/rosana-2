@@ -5,17 +5,22 @@ import '../styles/formFeedback.css'
 import './NotificationsPage.css'
 
 function userLabel(user) {
-  return `${user.first_name} ${user.last_name}`.trim() || user.username
+  if (!user) return 'Another user'
+  return `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || 'Another user'
 }
 
 function describe(notification) {
+  const groupName = notification.group?.name || 'this group'
   if (notification.notification_type === 'group_invite') {
-    const roleSuffix = notification.organizational_roles.length > 0
-      ? ` as ${notification.organizational_roles.join(', ')}`
+    const organizationalRoles = Array.isArray(notification.organizational_roles)
+      ? notification.organizational_roles
+      : []
+    const roleSuffix = organizationalRoles.length > 0
+      ? ` as ${organizationalRoles.join(', ')}`
       : ''
-    return `You've been invited to join "${notification.group.name}"${roleSuffix}.`
+    return `You've been invited to join "${groupName}"${roleSuffix}.`
   }
-  return `${userLabel(notification.user)} requested to join "${notification.group.name}".`
+  return `${userLabel(notification.user)} requested to join "${groupName}".`
 }
 
 const STATUS_LABEL = {
@@ -32,8 +37,11 @@ export default function NotificationsPage() {
   const load = useCallback(async () => {
     try {
       const data = await listNotifications()
-      setNotifications(data)
-      setError('')
+      setNotifications(Array.isArray(data) ? data : [])
+      if (!Array.isArray(data)) {
+        setError('Notifications were returned in an unexpected format.')
+      }
+      else setError('')
     } catch {
       setError('Unable to load notifications. Please try again.')
     } finally {
