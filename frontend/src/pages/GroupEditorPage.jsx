@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   changeGroupMemberRoles,
   createGroup,
@@ -42,6 +42,7 @@ function memberLabel(member) {
 
 export default function GroupEditorPage() {
   const { id } = useParams()
+  const location = useLocation()
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -77,7 +78,9 @@ export default function GroupEditorPage() {
   const [isCreatingSubgroup, setIsCreatingSubgroup] = useState(false)
   const [subgroupError, setSubgroupError] = useState('')
 
-  const isNew = id === 'new'
+  // The /groups/new route has no :id parameter, so useParams() returns
+  // undefined there rather than the string "new".
+  const isNew = location.pathname === '/groups/new'
 
   const canManage = group && user && (group.admin?.id === user.id || user.is_staff)
 
