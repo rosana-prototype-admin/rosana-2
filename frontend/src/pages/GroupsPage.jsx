@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { deleteGroup, listGroupMembers, listMyGroups, restoreGroup, updateGroupJcodes } from '../api/groups'
+import {
+  deleteGroup,
+  listGroupMembers,
+  listMyGroups,
+  requestToJoinGroup,
+  restoreGroup,
+  searchGroups,
+  updateGroupJcodes,
+} from '../api/groups'
 import { listJcodes } from '../api/jcodes'
 import ConfirmDialog from '../components/ConfirmDialog'
 import DataTable from '../components/DataTable'
@@ -30,6 +38,13 @@ export default function GroupsPage() {
   const [members, setMembers] = useState([])
   const [isLoadingMembers, setIsLoadingMembers] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
+  const [isGroupFinderOpen, setIsGroupFinderOpen] = useState(false)
+  const [groupFinderQuery, setGroupFinderQuery] = useState('')
+  const [groupFinderResults, setGroupFinderResults] = useState([])
+  const [isSearchingGroups, setIsSearchingGroups] = useState(false)
+  const [groupFinderError, setGroupFinderError] = useState('')
+  const [joinRequestIds, setJoinRequestIds] = useState(new Set())
+  const [joiningGroupId, setJoiningGroupId] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [selectedJcodeIds, setSelectedJcodeIds] = useState([])
@@ -135,6 +150,33 @@ export default function GroupsPage() {
     setIsCreating(true)
     navigate('/groups/new')
     setIsCreating(false)
+  }
+
+  async function handleFindGroups(event) {
+    event.preventDefault()
+    setGroupFinderError('')
+    setIsSearchingGroups(true)
+    try {
+      setGroupFinderResults(await searchGroups(groupFinderQuery.trim()))
+    } catch {
+      setGroupFinderError('Unable to search for groups. Please try again.')
+    } finally {
+      setIsSearchingGroups(false)
+    }
+  }
+
+  async function handleRequestToJoin(groupId) {
+    setGroupFinderError('')
+    setJoiningGroupId(groupId)
+    try {
+      await requestToJoinGroup(groupId)
+      setJoinRequestIds((current) => new Set([...current, groupId]))
+    } catch (err) {
+      const detail = err.response?.data?.non_field_errors?.[0] || err.response?.data?.detail
+      setGroupFinderError(detail || 'Unable to request to join this group. Please try again.')
+    } finally {
+      setJoiningGroupId(null)
+    }
   }
 
   async function handleConfirmDelete() {
@@ -245,6 +287,15 @@ export default function GroupsPage() {
         </button>
         <button
           type="button"
+          onClick={() => {
+            setIsGroupFinderOpen((current) => !current)
+            setGroupFinderError('')
+          }}
+        >
+          Find group to join
+        </button>
+        <button
+          type="button"
           onClick={() => setIsDeleteDialogOpen(true)}
           disabled={!isSelectedGroupAdmin || isDeleting}
         >
@@ -254,6 +305,62 @@ export default function GroupsPage() {
           <button type="button" onClick={handleRestore}>Restore</button>
         )}
       </div>
+
+      {isGroupFinderOpen && (
+        <section className="group-finder" aria-labelledby="group-finder-heading">
+          <div className="group-section-heading">
+            <div>
+              <h2 id="group-finder-heading">Find a group to join</h2>
+              <p className="text-sm">Search for a group and send a request to its administrator.</p>
+            </div>
+            <button type="button" onClick={() => setIsGroupFinderOpen(false)}>Close</button>
+          </div>
+          <form className="group-finder-form" onSubmit={handleFindGroups}>
+            <input
+              type="search"
+              value={groupFinderQuery}
+              onChange={(event) => setGroupFinderQuery(event.target.value)}
+              placeholder="Search by group name"
+              aria-label="Search by group name"
+            />
+            <button type="submit" disabled={isSearchingGroups}>
+              {isSearchingGroups ? 'Searching…' : 'Search'}
+            </button>
+          </form>
+          {groupFinderError && <p className="form-error" role="alert">{groupFinderError}</p>}
+          {groupFinderResults.length > 0 ? (
+            <ul className="group-finder-results">
+              {groupFinderResults.map((group) => {
+                const isMember = groups.some((ownedGroup) => ownedGroup.id === group.id)
+                const requestSent = joinRequestIds.has(group.id)
+                return (
+                  <li key={group.id} className="group-finder-result">
+                    <div>
+                      <strong>{group.name}</strong>
+                      <span>Administrator: {displayUserName(group.admin)}</span>
+                    </div>
+                    {isMember ? (
+                      <span className="text-sm">Already a member</span>
+                    ) : requestSent ? (
+                      <span className="text-sm">Request sent</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleRequestToJoin(group.id)}
+                        disabled={joiningGroupId === group.id}
+                      >
+                        {joiningGroupId === group.id ? 'Sending…' : 'Request to join'}
+                      </button>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          ) : (
+            !isSearchingGroups && groupFinderQuery.trim() && <p className="text-sm">No groups found.</p>
+          )}
+        </section>
+      )}
 
       {isLoading ? (
         <p className="text-sm">Loading groups…</p>
