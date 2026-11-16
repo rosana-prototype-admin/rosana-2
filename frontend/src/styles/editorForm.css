@@ -579,6 +579,42 @@
   gap: 16px;
 }
 
+.group-own-permissions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.group-own-permissions h3 {
+  margin: 0 0 4px;
+  color: var(--text-h);
+}
+
+.group-permissions-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--text);
+}
+
+.group-permissions-table th,
+.group-permissions-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.group-permissions-table th {
+  color: var(--text-h);
+  font-weight: var(--font-semibold);
+}
+
+.group-permissions-table td:last-child,
+.group-permissions-table th:last-child {
+  width: 90px;
+  text-align: center;
+}
+
 .jcode-picker {
   display: flex;
   flex-direction: column;

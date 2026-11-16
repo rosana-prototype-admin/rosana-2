@@ -497,6 +497,39 @@ export default function GroupEditorPage() {
             emptyMessage="No members yet."
           />
         )}
+
+        {currentMember && (
+          <section className="group-own-permissions" aria-labelledby="own-permissions-heading">
+            <div className="group-section-heading">
+              <div>
+                <h3 id="own-permissions-heading">Your group permissions</h3>
+                <p className="text-sm">
+                  {currentMember.permissions_locked
+                    ? 'Group administrators always have all permissions.'
+                    : 'These permissions apply to your work in this group.'}
+                </p>
+              </div>
+            </div>
+            <table className="group-permissions-table">
+              <thead>
+                <tr>
+                  <th scope="col">Category</th>
+                  <th scope="col">Permission</th>
+                  <th scope="col">Assigned</th>
+                </tr>
+              </thead>
+              <tbody>
+                {permissionDefinitions.map((permission) => (
+                  <tr key={permission.code}>
+                    <td>{permission.category}</td>
+                    <td>{permission.label}</td>
+                    <td>{currentMember.permissions?.[permission.code] ? 'Yes' : 'No'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        )}
       </section>}
 
       {!isNew && <section className="editor-section">
