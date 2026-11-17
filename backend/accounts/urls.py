@@ -7,6 +7,7 @@ from rest_framework_simplejwt.views import (
 
 from .views import (
     MeView,
+    ChangePasswordView,
     PasswordResetConfirmView,
     PasswordResetRequestView,
     RegisterView,
@@ -44,6 +45,7 @@ urlpatterns = [
     path('admin/groups/<int:group_pk>/seats/<int:pk>/', AdminGroupSeatDetailView.as_view(), name='admin-group-seat-detail'),
     path('admin/audit/', AdminAuditEventListView.as_view(), name='admin-audit-list'),
     path('me/', MeView.as_view(), name='me'),
+    path('change-password/', ChangePasswordView.as_view(), name='change-password'),
     path('users/', UserSearchView.as_view(), name='user-search'),
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

@@ -5,6 +5,11 @@ export async function updateCurrentUser(payload) {
   return data
 }
 
+export async function changeCurrentPassword(payload) {
+  const { data } = await client.post('/auth/change-password/', payload)
+  return data
+}
+
 // Directory search for finding users to invite. `q` and/or `jcode` may be
 // omitted, but at least one is required for the backend to return results.
 export async function searchUsers({ q, jcode } = {}) {

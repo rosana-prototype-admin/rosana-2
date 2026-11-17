@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { listMyGroups } from '../api/groups'
+import { changeCurrentPassword } from '../api/users'
 import '../styles/formFeedback.css'
 import './SettingsPage.css'
 
@@ -102,6 +103,9 @@ export default function SettingsPage() {
   const [preferences, setPreferences] = useState(() => preferencesFromUser(user))
   const [isSavingProfile, setIsSavingProfile] = useState(false)
   const [isSavingPreferences, setIsSavingPreferences] = useState(false)
+  const [passwords, setPasswords] = useState({ current_password: '', new_password: '', confirm_password: '' })
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+  const [passwordSaved, setPasswordSaved] = useState(false)
   const [error, setError] = useState('')
   const [profileSaved, setProfileSaved] = useState(false)
   const [preferencesSaved, setPreferencesSaved] = useState(false)
@@ -121,6 +125,14 @@ export default function SettingsPage() {
       setPreferencesSaved(false)
       setRegionalMessage('')
       setPreferences((current) => ({ ...current, [key]: event.target.value }))
+    }
+  }
+
+  function handlePasswordChange(key) {
+    return (event) => {
+      setPasswordSaved(false)
+      setError('')
+      setPasswords((current) => ({ ...current, [key]: event.target.value }))
     }
   }
 
@@ -196,6 +208,26 @@ export default function SettingsPage() {
     }
   }
 
+  async function handlePasswordSubmit(event) {
+    event.preventDefault()
+    setIsChangingPassword(true)
+    setError('')
+    setPasswordSaved(false)
+    try {
+      await changeCurrentPassword(passwords)
+      setPasswords({ current_password: '', new_password: '', confirm_password: '' })
+      setPasswordSaved(true)
+    } catch (err) {
+      const responseData = err.response?.data
+      const firstError = responseData && typeof responseData === 'object'
+        ? Object.values(responseData).flat()[0]
+        : null
+      setError(firstError || 'Unable to change your password. Please try again.')
+    } finally {
+      setIsChangingPassword(false)
+    }
+  }
+
   return (
     <main className="settings-page">
       <div className="settings-page-header">
@@ -223,6 +255,25 @@ export default function SettingsPage() {
         <div className="settings-actions">
           <button type="submit" className="settings-save" disabled={isSavingProfile}>
             {isSavingProfile ? 'Saving...' : 'Save Profile'}
+          </button>
+        </div>
+      </form>
+
+      <form className="settings-card" onSubmit={handlePasswordSubmit}>
+        <div className="settings-section-heading">
+          <h2>Change password</h2>
+          <p>Enter your current password, then choose a new password.</p>
+        </div>
+        {error && <p className="form-error" role="alert">{error}</p>}
+        {passwordSaved && <p className="form-success" role="status">Password changed successfully.</p>}
+        <div className="settings-grid">
+          <label className="settings-field"><span>Current password</span><input type="password" value={passwords.current_password} onChange={handlePasswordChange('current_password')} autoComplete="current-password" disabled={isChangingPassword} required /></label>
+          <label className="settings-field"><span>New password</span><input type="password" value={passwords.new_password} onChange={handlePasswordChange('new_password')} autoComplete="new-password" disabled={isChangingPassword} required /></label>
+          <label className="settings-field"><span>Confirm new password</span><input type="password" value={passwords.confirm_password} onChange={handlePasswordChange('confirm_password')} autoComplete="new-password" disabled={isChangingPassword} required /></label>
+        </div>
+        <div className="settings-actions">
+          <button type="submit" className="settings-save" disabled={isChangingPassword}>
+            {isChangingPassword ? 'Changing...' : 'Change Password'}
           </button>
         </div>
       </form>

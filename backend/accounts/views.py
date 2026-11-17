@@ -13,6 +13,7 @@ from .password_reset import send_password_reset_email
 from .serializers import (
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
+    ChangePasswordSerializer,
     RegisterSerializer,
     UserSearchResultSerializer,
     UserSerializer,
@@ -121,6 +122,18 @@ class MeView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class ChangePasswordView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        user.set_password(serializer.validated_data['new_password'])
+        user.save(update_fields=['password'])
+        return Response({'detail': 'Your password has been changed.'})
 
 
 class UserSearchView(generics.ListAPIView):

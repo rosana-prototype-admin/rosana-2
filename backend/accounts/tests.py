@@ -159,6 +159,36 @@ class RegistrationAndAuthTests(APITestCase):
         response = self.client.get(reverse('me'))
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_authenticated_user_can_change_password(self):
+        user = User.objects.create_user(username='password-user', email='password@example.com', password='OldStrongPass123!')
+        self.client.force_authenticate(user=user)
+        response = self.client.post(
+            reverse('change-password'),
+            {
+                'current_password': 'OldStrongPass123!',
+                'new_password': 'NewStrongPass456!',
+                'confirm_password': 'NewStrongPass456!',
+            },
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        user.refresh_from_db()
+        self.assertTrue(user.check_password('NewStrongPass456!'))
+
+    def test_change_password_requires_current_password_and_confirmation(self):
+        user = User.objects.create_user(username='password-user', email='password@example.com', password='OldStrongPass123!')
+        self.client.force_authenticate(user=user)
+        response = self.client.post(
+            reverse('change-password'),
+            {
+                'current_password': 'wrong-password',
+                'new_password': 'NewStrongPass456!',
+                'confirm_password': 'different-password',
+            },
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        user.refresh_from_db()
+        self.assertTrue(user.check_password('OldStrongPass123!'))
+
     def test_subscription_type_is_not_self_editable(self):
         user = User.objects.create_user(username='carol', email='carol@example.com', password='StrongPass123!')
         self.client.force_authenticate(user=user)
