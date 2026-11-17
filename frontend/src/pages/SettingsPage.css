@@ -158,6 +158,72 @@
   font-size: var(--text-sm);
 }
 
+.settings-danger-zone {
+  border-color: color-mix(in srgb, #b91c1c 35%, var(--border));
+}
+
+.settings-security-action,
+.settings-deactivate-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.settings-security-action h3,
+.settings-deactivate-form h3 {
+  margin: 0 0 4px;
+  color: var(--text-h);
+}
+
+.settings-security-action p,
+.settings-deactivate-form p {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--text-sm);
+}
+
+.settings-secondary-action,
+.settings-danger-action {
+  align-self: flex-start;
+  padding: 9px 16px;
+  border-radius: 6px;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+}
+
+.settings-secondary-action {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-h);
+}
+
+.settings-danger-action {
+  border: 1px solid #b91c1c;
+  background: #b91c1c;
+  color: #fff;
+}
+
+.settings-secondary-action:disabled,
+.settings-danger-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settings-confirmation {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--text);
+  font-size: var(--text-sm);
+}
+
+.settings-confirmation input {
+  margin-top: 2px;
+}
+
 @media (max-width: 640px) {
   .settings-page {
     padding: 24px 16px;

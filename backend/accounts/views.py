@@ -6,7 +6,10 @@ from rest_framework import generics, permissions, serializers, status
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
+from groups.models import Group
+from accounts.audit import record_admin_event
 from .email import send_verification_email
 from .models import User
 from .password_reset import send_password_reset_email
@@ -14,6 +17,7 @@ from .serializers import (
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
     ChangePasswordSerializer,
+    DeactivateAccountSerializer,
     RegisterSerializer,
     UserSearchResultSerializer,
     UserSerializer,
@@ -134,6 +138,39 @@ class ChangePasswordView(APIView):
         user.set_password(serializer.validated_data['new_password'])
         user.save(update_fields=['password'])
         return Response({'detail': 'Your password has been changed.'})
+
+
+def blacklist_all_refresh_tokens(user):
+    for token in OutstandingToken.objects.filter(user=user):
+        BlacklistedToken.objects.get_or_create(token=token)
+
+
+class RevokeAllSessionsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        blacklist_all_refresh_tokens(request.user)
+        return Response({'detail': 'All sessions have been signed out.'})
+
+
+class DeactivateAccountView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = DeactivateAccountSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        if user.is_staff:
+            raise serializers.ValidationError('Platform administrator accounts cannot be deactivated here.')
+        if Group.objects.filter(admin=user, archived_at__isnull=True).exists():
+            raise serializers.ValidationError(
+                {'detail': 'Transfer administration of every active group before deactivating your account.'}
+            )
+        user.is_active = False
+        user.save(update_fields=['is_active'])
+        blacklist_all_refresh_tokens(user)
+        record_admin_event(request, 'user.deactivated', user, after={'is_active': False})
+        return Response({'detail': 'Your account has been deactivated.'})
 
 
 class UserSearchView(generics.ListAPIView):

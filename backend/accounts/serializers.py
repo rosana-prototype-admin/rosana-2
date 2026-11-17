@@ -218,3 +218,18 @@ class ChangePasswordSerializer(serializers.Serializer):
         if attrs['new_password'] == attrs['current_password']:
             raise serializers.ValidationError({'new_password': 'The new password must be different from the current password.'})
         return attrs
+
+
+class DeactivateAccountSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True, trim_whitespace=False)
+    confirm_deactivation = serializers.BooleanField(write_only=True)
+
+    def validate_current_password(self, value):
+        if not self.context['request'].user.check_password(value):
+            raise serializers.ValidationError('Your current password is incorrect.')
+        return value
+
+    def validate_confirm_deactivation(self, value):
+        if not value:
+            raise serializers.ValidationError('You must confirm that you want to deactivate your account.')
+        return value

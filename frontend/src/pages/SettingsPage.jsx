@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { listMyGroups } from '../api/groups'
-import { changeCurrentPassword } from '../api/users'
+import { changeCurrentPassword, deactivateCurrentAccount, revokeAllSessions } from '../api/users'
 import '../styles/formFeedback.css'
 import './SettingsPage.css'
 
@@ -98,7 +98,7 @@ function profileFromUser(user) {
 }
 
 export default function SettingsPage() {
-  const { user, updateUser } = useAuth()
+  const { user, updateUser, logout } = useAuth()
   const [profile, setProfile] = useState(() => profileFromUser(user))
   const [preferences, setPreferences] = useState(() => preferencesFromUser(user))
   const [isSavingProfile, setIsSavingProfile] = useState(false)
@@ -106,6 +106,10 @@ export default function SettingsPage() {
   const [passwords, setPasswords] = useState({ current_password: '', new_password: '', confirm_password: '' })
   const [isChangingPassword, setIsChangingPassword] = useState(false)
   const [passwordSaved, setPasswordSaved] = useState(false)
+  const [isSigningOutAll, setIsSigningOutAll] = useState(false)
+  const [isDeactivating, setIsDeactivating] = useState(false)
+  const [deactivationPassword, setDeactivationPassword] = useState('')
+  const [deactivationConfirmed, setDeactivationConfirmed] = useState(false)
   const [error, setError] = useState('')
   const [profileSaved, setProfileSaved] = useState(false)
   const [preferencesSaved, setPreferencesSaved] = useState(false)
@@ -228,6 +232,43 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleSignOutAll() {
+    if (!window.confirm('Sign out of Rosana on every device and browser?')) return
+    setIsSigningOutAll(true)
+    setError('')
+    try {
+      await revokeAllSessions()
+      await logout()
+    } catch (err) {
+      const detail = err.response?.data?.detail
+      setError(detail || 'Unable to sign out of all sessions. Please try again.')
+    } finally {
+      setIsSigningOutAll(false)
+    }
+  }
+
+  async function handleDeactivate(event) {
+    event.preventDefault()
+    if (!window.confirm('Deactivate your account? You will be signed out and will need an administrator to reactivate it.')) return
+    setIsDeactivating(true)
+    setError('')
+    try {
+      await deactivateCurrentAccount({
+        current_password: deactivationPassword,
+        confirm_deactivation: deactivationConfirmed,
+      })
+      await logout()
+    } catch (err) {
+      const responseData = err.response?.data
+      const firstError = responseData && typeof responseData === 'object'
+        ? Object.values(responseData).flat()[0]
+        : null
+      setError(firstError || 'Unable to deactivate your account. Please try again.')
+    } finally {
+      setIsDeactivating(false)
+    }
+  }
+
   return (
     <main className="settings-page">
       <div className="settings-page-header">
@@ -314,6 +355,34 @@ export default function SettingsPage() {
           </button>
         </div>
       </form>
+
+      <section className="settings-card settings-danger-zone">
+        <div className="settings-section-heading">
+          <h2>Account security and lifecycle</h2>
+          <p>Manage active sessions or deactivate this account.</p>
+        </div>
+        {error && <p className="form-error" role="alert">{error}</p>}
+        <div className="settings-security-action">
+          <div>
+            <h3>Sign out of all sessions</h3>
+            <p>Revoke every refresh session, including this browser. Short-lived access tokens may remain valid briefly.</p>
+          </div>
+          <button type="button" className="settings-secondary-action" onClick={handleSignOutAll} disabled={isSigningOutAll || isDeactivating}>
+            {isSigningOutAll ? 'Signing out...' : 'Sign out everywhere'}
+          </button>
+        </div>
+        <form className="settings-deactivate-form" onSubmit={handleDeactivate}>
+          <div>
+            <h3>Deactivate account</h3>
+            <p>Deactivation prevents sign-in. You must transfer administration of any active groups first.</p>
+          </div>
+          <label className="settings-field"><span>Current password</span><input type="password" value={deactivationPassword} onChange={(event) => setDeactivationPassword(event.target.value)} autoComplete="current-password" disabled={isDeactivating || isSigningOutAll} required /></label>
+          <label className="settings-confirmation"><input type="checkbox" checked={deactivationConfirmed} onChange={(event) => setDeactivationConfirmed(event.target.checked)} disabled={isDeactivating || isSigningOutAll} /> <span>I understand that my account will be deactivated.</span></label>
+          <button type="submit" className="settings-danger-action" disabled={isDeactivating || isSigningOutAll || !deactivationConfirmed}>
+            {isDeactivating ? 'Deactivating...' : 'Deactivate account'}
+          </button>
+        </form>
+      </section>
     </main>
   )
 }

@@ -4,6 +4,8 @@ from django.core.exceptions import ValidationError
 from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APITestCase
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from geo.models import Jcode
 from groups.models import Group, Membership
@@ -188,6 +190,50 @@ class RegistrationAndAuthTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         user.refresh_from_db()
         self.assertTrue(user.check_password('OldStrongPass123!'))
+
+    def test_user_can_sign_out_of_all_sessions(self):
+        user = User.objects.create_user(username='session-user', email='session@example.com', password='StrongPass123!')
+        RefreshToken.for_user(user)
+        self.client.force_authenticate(user=user)
+        response = self.client.post(reverse('revoke-all-sessions'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(BlacklistedToken.objects.filter(token__user=user).count(), OutstandingToken.objects.filter(user=user).count())
+
+    def test_user_cannot_deactivate_while_administering_active_group(self):
+        user = User.objects.create_user(username='group-admin', email='group-admin@example.com', password='StrongPass123!')
+        Group.objects.create(name='Active group', admin=user)
+        self.client.force_authenticate(user=user)
+        response = self.client.post(
+            reverse('deactivate-account'),
+            {'current_password': 'StrongPass123!', 'confirm_deactivation': True},
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        user.refresh_from_db()
+        self.assertTrue(user.is_active)
+
+    def test_user_can_deactivate_without_active_groups(self):
+        user = User.objects.create_user(username='deactivate-user', email='deactivate@example.com', password='StrongPass123!')
+        self.client.force_authenticate(user=user)
+        response = self.client.post(
+            reverse('deactivate-account'),
+            {'current_password': 'StrongPass123!', 'confirm_deactivation': True},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        user.refresh_from_db()
+        self.assertFalse(user.is_active)
+
+    def test_platform_admin_cannot_deactivate_self(self):
+        user = User.objects.create_user(username='platform-admin', email='platform@example.com', password='StrongPass123!')
+        user.is_staff = True
+        user.save(update_fields=['is_staff'])
+        self.client.force_authenticate(user=user)
+        response = self.client.post(
+            reverse('deactivate-account'),
+            {'current_password': 'StrongPass123!', 'confirm_deactivation': True},
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        user.refresh_from_db()
+        self.assertTrue(user.is_active)
 
     def test_subscription_type_is_not_self_editable(self):
         user = User.objects.create_user(username='carol', email='carol@example.com', password='StrongPass123!')

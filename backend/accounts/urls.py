@@ -8,11 +8,13 @@ from rest_framework_simplejwt.views import (
 from .views import (
     MeView,
     ChangePasswordView,
+    DeactivateAccountView,
     PasswordResetConfirmView,
     PasswordResetRequestView,
     RegisterView,
     UserSearchView,
     VerifyEmailView,
+    RevokeAllSessionsView,
 )
 from .admin_api import (
     AdminResendVerificationView,
@@ -46,6 +48,8 @@ urlpatterns = [
     path('admin/audit/', AdminAuditEventListView.as_view(), name='admin-audit-list'),
     path('me/', MeView.as_view(), name='me'),
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
+    path('sessions/revoke-all/', RevokeAllSessionsView.as_view(), name='revoke-all-sessions'),
+    path('deactivate/', DeactivateAccountView.as_view(), name='deactivate-account'),
     path('users/', UserSearchView.as_view(), name='user-search'),
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
