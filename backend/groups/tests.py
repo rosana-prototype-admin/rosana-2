@@ -408,6 +408,37 @@ class MembershipTests(GroupsTestCase):
         self.assertEqual(roles_by_username, {'admin': 'admin', 'other': 'member'})
 
 
+class LeaveGroupTests(GroupsTestCase):
+    def test_member_can_leave_group(self):
+        group = Group.objects.create(name='Agency', admin=self.admin)
+        Membership.objects.create(user=self.other, group=group)
+        self.client.force_authenticate(user=self.other)
+
+        response = self.client.post(f'/api/groups/{group.pk}/leave/')
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Membership.objects.filter(group=group, user=self.other).exists())
+        self.assertTrue(AuditEvent.objects.filter(action='group.member_left', entity_id=str(group.pk)).exists())
+
+    def test_group_admin_cannot_leave_without_transfer(self):
+        group = Group.objects.create(name='Agency', admin=self.admin)
+        self.client.force_authenticate(user=self.admin)
+
+        response = self.client.post(f'/api/groups/{group.pk}/leave/')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        group.refresh_from_db()
+        self.assertEqual(group.admin_id, self.admin.pk)
+
+    def test_user_who_is_not_a_direct_member_cannot_leave(self):
+        group = Group.objects.create(name='Agency', admin=self.admin)
+        self.client.force_authenticate(user=self.other)
+
+        response = self.client.post(f'/api/groups/{group.pk}/leave/')
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
 class SetAdminTests(GroupsTestCase):
     def test_admin_can_promote_a_member(self):
         group = Group.objects.create(name='Agency', admin=self.admin)

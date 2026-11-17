@@ -153,6 +153,25 @@ class GroupViewSet(viewsets.ModelViewSet):
         notification = serializer.save()
         return Response(NotificationSerializer(notification).data, status=201)
 
+    @action(detail=True, methods=['post'], url_path='leave')
+    def leave(self, request, pk=None):
+        # This self-service action is intentionally fetched directly because
+        # ordinary group writes are restricted to administrators/delegated
+        # permissions by GroupAccessPermission.
+        group = get_object_or_404(Group.objects.all(), pk=pk)
+        if group.admin_id == request.user.pk:
+            raise ValidationError('Transfer group administration before leaving this group.')
+        membership = get_object_or_404(Membership, group=group, user=request.user)
+        membership.delete()
+        record_admin_event(
+            request,
+            'group.member_left',
+            group,
+            after={'user_id': request.user.pk},
+            group=group,
+        )
+        return Response(status=204)
+
     @action(detail=True, methods=['patch', 'delete'], url_path=r'members/(?P<user_id>\d+)')
     def member_detail(self, request, pk=None, user_id=None):
         group = self.get_object()

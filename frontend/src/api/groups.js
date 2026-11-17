@@ -71,6 +71,10 @@ export async function requestToJoinGroup(groupId) {
   return data
 }
 
+export async function leaveGroup(groupId) {
+  await client.post(`/groups/${groupId}/leave/`)
+}
+
 export async function changeGroupMemberRoles(groupId, userId, organizationalRoles, permissions) {
   const { data } = await client.patch(`/groups/${groupId}/members/${userId}/`, {
     organizational_roles: organizationalRoles,

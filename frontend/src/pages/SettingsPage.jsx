@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { listMyGroups } from '../api/groups'
+import { leaveGroup, listMyGroups } from '../api/groups'
+import { listNotifications } from '../api/notifications'
 import { changeCurrentPassword, deactivateCurrentAccount, revokeAllSessions } from '../api/users'
 import '../styles/formFeedback.css'
 import './SettingsPage.css'
@@ -115,6 +116,31 @@ export default function SettingsPage() {
   const [preferencesSaved, setPreferencesSaved] = useState(false)
   const [regionalMessage, setRegionalMessage] = useState('')
   const [isLoadingRegionalDefault, setIsLoadingRegionalDefault] = useState(false)
+  const [accountGroups, setAccountGroups] = useState([])
+  const [pendingNotifications, setPendingNotifications] = useState([])
+  const [isLoadingMemberships, setIsLoadingMemberships] = useState(true)
+  const [leavingGroupId, setLeavingGroupId] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadMemberships() {
+      try {
+        const [groups, notifications] = await Promise.all([listMyGroups(), listNotifications()])
+        if (!cancelled) {
+          setAccountGroups(groups)
+          setPendingNotifications(notifications.filter((notification) => notification.status === 'pending'))
+        }
+      } catch {
+        if (!cancelled) setError('Unable to load your group memberships and pending requests.')
+      } finally {
+        if (!cancelled) setIsLoadingMemberships(false)
+      }
+    }
+    loadMemberships()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   function handleProfileChange(key) {
     return (event) => {
@@ -269,6 +295,22 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleLeaveGroup(group) {
+    if (!window.confirm(`Leave "${group.name}"? You will lose access to this group's resources.`)) return
+    setLeavingGroupId(group.id)
+    setError('')
+    try {
+      await leaveGroup(group.id)
+      setAccountGroups((current) => current.filter((item) => item.id !== group.id))
+    } catch (err) {
+      const responseData = err.response?.data
+      const detail = responseData?.detail || (responseData && typeof responseData === 'object' ? Object.values(responseData).flat()[0] : null)
+      setError(detail || 'Unable to leave this group. Please try again.')
+    } finally {
+      setLeavingGroupId(null)
+    }
+  }
+
   return (
     <main className="settings-page">
       <div className="settings-page-header">
@@ -355,6 +397,44 @@ export default function SettingsPage() {
           </button>
         </div>
       </form>
+
+      <section className="settings-card">
+        <div className="settings-section-heading">
+          <h2>Groups and pending requests</h2>
+          <p>Review your current memberships and requests that still need action.</p>
+        </div>
+        {isLoadingMemberships ? <p className="text-sm">Loading memberships...</p> : (
+          <>
+            <div className="settings-membership-list">
+              <h3>Current groups</h3>
+              {accountGroups.length === 0 ? <p className="text-sm">You are not a member of any groups.</p> : accountGroups.map((group) => (
+                <div className="settings-membership-row" key={group.id}>
+                  <div>
+                    <strong>{group.name}</strong>
+                    <span>{group.user_role === 'admin' ? 'Group administrator' : `Member · Admin: ${group.admin?.username || 'Unknown'}`}</span>
+                  </div>
+                  <div className="settings-membership-actions">
+                    <a href={`/groups/${group.id}`}>Open group</a>
+                    {group.user_role !== 'admin' && <button type="button" className="settings-secondary-action" onClick={() => handleLeaveGroup(group)} disabled={leavingGroupId === group.id}>{leavingGroupId === group.id ? 'Leaving...' : 'Leave group'}</button>}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="settings-membership-list">
+              <h3>Pending requests and invitations</h3>
+              {pendingNotifications.length === 0 ? <p className="text-sm">No pending requests or invitations.</p> : pendingNotifications.map((notification) => (
+                <div className="settings-membership-row" key={notification.id}>
+                  <div>
+                    <strong>{notification.group?.name || 'Group'}</strong>
+                    <span>{notification.notification_type === 'group_invite' ? 'Invitation waiting for your response' : notification.is_requester ? 'Join request awaiting administrator approval' : `Join request from ${notification.user?.username || 'a user'}`}</span>
+                  </div>
+                  <a href="/notifications">Open notifications</a>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
 
       <section className="settings-card settings-danger-zone">
         <div className="settings-section-heading">
