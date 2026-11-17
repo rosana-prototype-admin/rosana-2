@@ -167,6 +167,34 @@ class RegistrationAndAuthTests(APITestCase):
         user.refresh_from_db()
         self.assertEqual(user.subscription_type, 'none')
 
+    def test_profile_fields_can_be_updated_but_primary_email_cannot(self):
+        user = User.objects.create_user(username='profile-user', email='profile@example.com', password='StrongPass123!')
+        self.client.force_authenticate(user=user)
+
+        response = self.client.patch(
+            reverse('me'),
+            {
+                'first_name': 'Profile',
+                'last_name': 'User',
+                'secondary_email': 'alternate@example.com',
+                'company': 'Example Organization',
+                'email': 'changed@example.com',
+            },
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        user.refresh_from_db()
+        self.assertEqual(user.first_name, 'Profile')
+        self.assertEqual(user.last_name, 'User')
+        self.assertEqual(user.secondary_email, 'alternate@example.com')
+        self.assertEqual(user.company, 'Example Organization')
+        self.assertEqual(user.email, 'profile@example.com')
+
+    def test_secondary_email_cannot_match_primary_email(self):
+        user = User.objects.create_user(username='profile-user', email='profile@example.com', password='StrongPass123!')
+        self.client.force_authenticate(user=user)
+        response = self.client.patch(reverse('me'), {'secondary_email': 'PROFILE@example.com'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_user_preferences_have_defaults_and_can_be_updated(self):
         user = User.objects.create_user(username='dana', email='dana@example.com', password='StrongPass123!')
         self.client.force_authenticate(user=user)

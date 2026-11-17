@@ -87,18 +87,38 @@ function preferencesFromUser(user) {
   }, {})
 }
 
+function profileFromUser(user) {
+  return {
+    first_name: user?.first_name || '',
+    last_name: user?.last_name || '',
+    secondary_email: user?.secondary_email || '',
+    company: user?.company || '',
+  }
+}
+
 export default function SettingsPage() {
   const { user, updateUser } = useAuth()
+  const [profile, setProfile] = useState(() => profileFromUser(user))
   const [preferences, setPreferences] = useState(() => preferencesFromUser(user))
-  const [isSaving, setIsSaving] = useState(false)
+  const [isSavingProfile, setIsSavingProfile] = useState(false)
+  const [isSavingPreferences, setIsSavingPreferences] = useState(false)
   const [error, setError] = useState('')
-  const [saved, setSaved] = useState(false)
+  const [profileSaved, setProfileSaved] = useState(false)
+  const [preferencesSaved, setPreferencesSaved] = useState(false)
   const [regionalMessage, setRegionalMessage] = useState('')
   const [isLoadingRegionalDefault, setIsLoadingRegionalDefault] = useState(false)
 
+  function handleProfileChange(key) {
+    return (event) => {
+      setProfileSaved(false)
+      setError('')
+      setProfile((current) => ({ ...current, [key]: event.target.value }))
+    }
+  }
+
   function handleChange(key) {
     return (event) => {
-      setSaved(false)
+      setPreferencesSaved(false)
       setRegionalMessage('')
       setPreferences((current) => ({ ...current, [key]: event.target.value }))
     }
@@ -106,7 +126,7 @@ export default function SettingsPage() {
 
   async function handleRegionalDefault() {
     setError('')
-    setSaved(false)
+    setPreferencesSaved(false)
     setRegionalMessage('')
     setIsLoadingRegionalDefault(true)
     try {
@@ -139,13 +159,13 @@ export default function SettingsPage() {
 
   async function handleSubmit(event) {
     event.preventDefault()
-    setIsSaving(true)
+    setIsSavingPreferences(true)
     setError('')
-    setSaved(false)
+    setPreferencesSaved(false)
     setRegionalMessage('')
     try {
       await updateUser(preferences)
-      setSaved(true)
+      setPreferencesSaved(true)
     } catch (err) {
       const responseData = err.response?.data
       const firstError = responseData && typeof responseData === 'object'
@@ -153,7 +173,26 @@ export default function SettingsPage() {
         : null
       setError(firstError || 'Unable to save your preferences. Please try again.')
     } finally {
-      setIsSaving(false)
+      setIsSavingPreferences(false)
+    }
+  }
+
+  async function handleProfileSubmit(event) {
+    event.preventDefault()
+    setIsSavingProfile(true)
+    setError('')
+    setProfileSaved(false)
+    try {
+      await updateUser(profile)
+      setProfileSaved(true)
+    } catch (err) {
+      const responseData = err.response?.data
+      const firstError = responseData && typeof responseData === 'object'
+        ? Object.values(responseData).flat()[0]
+        : null
+      setError(firstError || 'Unable to save your profile. Please try again.')
+    } finally {
+      setIsSavingProfile(false)
     }
   }
 
@@ -161,19 +200,47 @@ export default function SettingsPage() {
     <main className="settings-page">
       <div className="settings-page-header">
         <h1>Settings</h1>
-        <p>Choose the language, currency, and measurement units used in Rosana.</p>
+        <p>Manage your profile and the language, currency, and measurement units used in Rosana.</p>
       </div>
 
-      <form className="settings-card" onSubmit={handleSubmit}>
+      <form className="settings-card" onSubmit={handleProfileSubmit}>
+        <div className="settings-section-heading">
+          <h2>Profile</h2>
+          <p>Your primary email and username are managed as account identifiers.</p>
+        </div>
         {error && <p className="form-error" role="alert">{error}</p>}
-        {saved && <p className="form-success" role="status">Preferences saved.</p>}
+        {profileSaved && <p className="form-success" role="status">Profile saved.</p>}
+        <div className="settings-profile-meta">
+          <div><span>Username</span><strong>{user?.username || '—'}</strong></div>
+          <div><span>Primary email</span><strong>{user?.email || '—'}</strong></div>
+        </div>
+        <div className="settings-grid">
+          <label className="settings-field"><span>First name</span><input type="text" value={profile.first_name} onChange={handleProfileChange('first_name')} maxLength={150} disabled={isSavingProfile} /></label>
+          <label className="settings-field"><span>Last name</span><input type="text" value={profile.last_name} onChange={handleProfileChange('last_name')} maxLength={150} disabled={isSavingProfile} /></label>
+          <label className="settings-field"><span>Secondary email</span><input type="email" value={profile.secondary_email} onChange={handleProfileChange('secondary_email')} maxLength={254} disabled={isSavingProfile} /></label>
+          <label className="settings-field"><span>Company or organization</span><input type="text" value={profile.company} onChange={handleProfileChange('company')} maxLength={255} disabled={isSavingProfile} /></label>
+        </div>
+        <div className="settings-actions">
+          <button type="submit" className="settings-save" disabled={isSavingProfile}>
+            {isSavingProfile ? 'Saving...' : 'Save Profile'}
+          </button>
+        </div>
+      </form>
+
+      <form className="settings-card" onSubmit={handleSubmit}>
+        <div className="settings-section-heading">
+          <h2>Preferences</h2>
+          <p>Choose the display and measurement conventions used by Rosana.</p>
+        </div>
+        {error && <p className="form-error" role="alert">{error}</p>}
+        {preferencesSaved && <p className="form-success" role="status">Preferences saved.</p>}
         {regionalMessage && <p className="settings-regional-message" role="status">{regionalMessage}</p>}
 
         <div className="settings-grid">
           {PREFERENCE_FIELDS.map(({ key, label, options }) => (
             <label className="settings-field" key={key}>
               <span>{label}</span>
-              <select value={preferences[key]} onChange={handleChange(key)} disabled={isSaving}>
+              <select value={preferences[key]} onChange={handleChange(key)} disabled={isSavingPreferences}>
                 {options.map(([value, optionLabel]) => (
                   <option key={value} value={value}>{optionLabel}</option>
                 ))}
@@ -183,14 +250,14 @@ export default function SettingsPage() {
         </div>
 
         <div className="settings-actions">
-          <button type="submit" className="settings-save" disabled={isSaving}>
-            {isSaving ? 'Saving…' : 'Save Preferences'}
+          <button type="submit" className="settings-save" disabled={isSavingPreferences}>
+            {isSavingPreferences ? 'Saving…' : 'Save Preferences'}
           </button>
           <button
             type="button"
             className="settings-regional-default"
             onClick={handleRegionalDefault}
-            disabled={isSaving || isLoadingRegionalDefault}
+            disabled={isSavingPreferences || isLoadingRegionalDefault}
           >
             {isLoadingRegionalDefault ? 'Loading regional default…' : 'Set to regional default'}
           </button>

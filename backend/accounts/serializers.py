@@ -57,7 +57,12 @@ class UserSerializer(serializers.ModelSerializer):
             'area_large_unit',
             'volume_unit',
         ]
-        read_only_fields = ['id', 'username', 'is_staff', 'subscription_type']
+        read_only_fields = ['id', 'username', 'email', 'is_staff', 'subscription_type']
+
+    def validate_secondary_email(self, value):
+        if value and self.instance and value.casefold() == self.instance.email.casefold():
+            raise serializers.ValidationError('Secondary email must be different from the primary email.')
+        return value
 
 
 class UserSearchResultSerializer(serializers.ModelSerializer):
