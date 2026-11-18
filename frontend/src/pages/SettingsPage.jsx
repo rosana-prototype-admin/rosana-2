@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { leaveGroup, listMyGroups } from '../api/groups'
 import { listNotifications } from '../api/notifications'
-import { changeCurrentPassword, deactivateCurrentAccount, revokeAllSessions } from '../api/users'
+import { changeCurrentPassword, deactivateCurrentAccount, getMyEntitlements, revokeAllSessions } from '../api/users'
 import '../styles/formFeedback.css'
 import './SettingsPage.css'
 
@@ -82,6 +82,25 @@ const REGIONAL_DEFAULTS = {
   },
 }
 
+const ACCESS_STATE_LABELS = {
+  active: 'Active',
+  expired_grace: 'Renewal grace period',
+  expired_restricted: 'Restricted access',
+  expired_locked: 'Locked access',
+  archive_due: 'Pending archive',
+  unlicensed: 'No active subscription',
+}
+
+const FEATURE_LABELS = {
+  view_existing: 'View existing resources',
+  comment: 'Comment on resources',
+  analyze: 'Analyze resources',
+  manage_billing: 'Manage billing',
+  manage_users: 'Manage users',
+  manage_groups: 'Manage groups',
+  delete_resources: 'Delete resources',
+}
+
 function preferencesFromUser(user) {
   return PREFERENCE_FIELDS.reduce((preferences, { key }) => {
     preferences[key] = user?.[key] || DEFAULT_PREFERENCES[key]
@@ -120,6 +139,8 @@ export default function SettingsPage() {
   const [pendingNotifications, setPendingNotifications] = useState([])
   const [isLoadingMemberships, setIsLoadingMemberships] = useState(true)
   const [leavingGroupId, setLeavingGroupId] = useState(null)
+  const [entitlements, setEntitlements] = useState([])
+  const [isLoadingEntitlements, setIsLoadingEntitlements] = useState(true)
 
   useEffect(() => {
     let cancelled = false
@@ -137,6 +158,20 @@ export default function SettingsPage() {
       }
     }
     loadMemberships()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    getMyEntitlements().then((records) => {
+      if (!cancelled) setEntitlements(records)
+    }).catch(() => {
+      if (!cancelled) setError('Unable to load subscription access details.')
+    }).finally(() => {
+      if (!cancelled) setIsLoadingEntitlements(false)
+    })
     return () => {
       cancelled = true
     }
@@ -397,6 +432,40 @@ export default function SettingsPage() {
           </button>
         </div>
       </form>
+
+      <section className="settings-card">
+        <div className="settings-section-heading">
+          <h2>Subscription access</h2>
+          <p>Review the plans, roles, seats, and features currently assigned to you.</p>
+        </div>
+        {isLoadingEntitlements ? <p className="text-sm">Loading subscription access...</p> : entitlements.length === 0 ? (
+          <p className="text-sm">You do not currently have an organization subscription.</p>
+        ) : entitlements.map((entitlement) => (
+          <div className="settings-entitlement" key={entitlement.group_id}>
+            <div className="settings-entitlement-heading">
+              <div>
+                <h3>{entitlement.group_name}</h3>
+                {entitlement.organization_name && entitlement.organization_name !== entitlement.group_name && <p>Organization: {entitlement.organization_name}</p>}
+              </div>
+              <span className={`settings-access-state settings-access-state-${entitlement.access_state}`}>
+                {ACCESS_STATE_LABELS[entitlement.access_state] || entitlement.access_state}
+              </span>
+            </div>
+            <dl className="settings-entitlement-meta">
+              <div><dt>Plan</dt><dd>{entitlement.plan_name || entitlement.plan_code || 'None'}</dd></div>
+              <div><dt>Organization role</dt><dd>{entitlement.organization_role || 'Not assigned'}</dd></div>
+              <div><dt>Technical seat</dt><dd>{entitlement.has_technical_seat ? 'Assigned' : 'Not assigned'}</dd></div>
+            </dl>
+            <div className="settings-feature-list">
+              {Object.entries(entitlement.features || {}).map(([code, enabled]) => (
+                <span className={enabled ? 'settings-feature-enabled' : 'settings-feature-disabled'} key={code}>
+                  {enabled ? '✓' : '—'} {FEATURE_LABELS[code] || code}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
 
       <section className="settings-card">
         <div className="settings-section-heading">

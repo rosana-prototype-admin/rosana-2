@@ -5,6 +5,11 @@ export async function updateCurrentUser(payload) {
   return data
 }
 
+export async function getMyEntitlements() {
+  const { data } = await client.get('/auth/me/entitlements/')
+  return data.entitlements || []
+}
+
 export async function changeCurrentPassword(payload) {
   const { data } = await client.post('/auth/change-password/', payload)
   return data
