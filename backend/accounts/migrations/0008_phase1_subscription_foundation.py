@@ -36,7 +36,7 @@ def forwards_seed_plans(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounts', '0007_audit_events'),
+        ('accounts', '0008_repair_subscriptionseat'),
     ]
 
     operations = [
