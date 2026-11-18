@@ -26,6 +26,39 @@
   gap: 16px;
 }
 
+.splash-access-warning {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  background: #fffbeb;
+  color: #78350f;
+}
+
+.splash-access-warning strong {
+  color: #78350f;
+}
+
+.splash-access-warning ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.splash-access-warning button {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border: 1px solid #d97706;
+  border-radius: 6px;
+  background: transparent;
+  color: #92400e;
+  font: inherit;
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+}
+
 .splash-eyebrow {
   margin: 0 0 4px;
   color: var(--text);
@@ -63,4 +96,10 @@
 .splash-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .splash-access-warning {
+    flex-direction: column;
+  }
 }

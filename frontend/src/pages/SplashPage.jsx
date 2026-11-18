@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { listMyGroups } from '../api/groups'
+import { getMyEntitlements } from '../api/users'
 import { useAuth } from '../hooks/useAuth'
 import './SplashPage.css'
 
@@ -20,10 +21,19 @@ const SUBSCRIPTION_LABELS = {
   republic: 'Republic',
 }
 
+const ACCESS_STATE_LABELS = {
+  expired_grace: 'renewal grace period',
+  expired_restricted: 'restricted access',
+  expired_locked: 'locked access',
+  archive_due: 'pending archive',
+}
+
 export default function SplashPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [groups, setGroups] = useState([])
+  const [entitlements, setEntitlements] = useState([])
+  const [isLoadingEntitlements, setIsLoadingEntitlements] = useState(true)
 
   useEffect(() => {
     let cancelled = false
@@ -33,6 +43,23 @@ export default function SplashPage() {
       })
       .catch(() => {
         if (!cancelled) setGroups([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    getMyEntitlements()
+      .then((data) => {
+        if (!cancelled) setEntitlements(data)
+      })
+      .catch(() => {
+        if (!cancelled) setEntitlements([])
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingEntitlements(false)
       })
     return () => {
       cancelled = true
@@ -53,6 +80,19 @@ export default function SplashPage() {
   }
 
   const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ')
+  const accessWarnings = entitlements.flatMap((entitlement) => {
+    const label = entitlement.group_name || 'Your organization'
+    if (!entitlement.plan_code || entitlement.access_state === 'unlicensed') {
+      return [`${label} does not have an active subscription plan.`]
+    }
+    if (entitlement.access_state !== 'active') {
+      return [`${label} has ${ACCESS_STATE_LABELS[entitlement.access_state] || 'restricted access'}.`]
+    }
+    if (entitlement.organization_role === 'technical_user' && !entitlement.has_technical_seat) {
+      return [`${label} has not assigned you a Technical User seat.`]
+    }
+    return []
+  })
 
   return (
     <main className="splash-page">
@@ -63,6 +103,18 @@ export default function SplashPage() {
             <h1>{fullName || user.username}</h1>
           </div>
         </div>
+
+        {!isLoadingEntitlements && accessWarnings.length > 0 && (
+          <section className="splash-access-warning" role="alert">
+            <div>
+              <strong>Action needed for account access</strong>
+              <ul>
+                {[...new Set(accessWarnings)].map((warning) => <li key={warning}>{warning}</li>)}
+              </ul>
+            </div>
+            <button type="button" onClick={() => navigate('/settings')}>View Settings</button>
+          </section>
+        )}
 
         <dl className="splash-details">
           <div>
