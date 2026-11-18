@@ -10,7 +10,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from geo.models import Jcode
 from groups.models import Group, Membership
 
-from .models import AuditEvent, Contract, User, UserSubscription
+from .models import AuditEvent, Contract, Plan, SubscriptionSeat, User, UserSubscription
 from .staff import validate_staff_account_change
 
 
@@ -525,6 +525,26 @@ class AdminUserManagementTests(APITestCase):
         self.assertEqual(event.group_id, self.company.pk)
         self.assertEqual(event.after['seat_limit'], 5)
 
+    def test_subscription_uses_plan_catalog_and_acquisition_type(self):
+        self.client.force_authenticate(user=self.admin)
+        plan = Plan.objects.create(code='pilot', name='Pilot', self_service_visible=False)
+        response = self.client.patch(
+            reverse('admin-group-subscription', args=[self.company.pk]),
+            {'plan_id': plan.pk, 'acquisition_type': 'negotiated'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        subscription = UserSubscription.objects.get(group=self.company)
+        self.assertEqual(subscription.plan_id, plan.pk)
+        self.assertEqual(subscription.plan_code, 'pilot')
+        self.assertEqual(subscription.acquisition_type, 'negotiated')
+
+    def test_subscriptions_are_restricted_to_top_level_organization_groups(self):
+        child = Group.objects.create(name='Managed Department', parent=self.company, admin=self.admin)
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get(reverse('admin-group-subscription', args=[child.pk]))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_admin_can_create_and_update_company_contract(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.post(
@@ -571,3 +591,7 @@ class AdminUserManagementTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertTrue(AuditEvent.objects.filter(action='seat.assigned').exists())
+        self.assertEqual(
+            SubscriptionSeat.objects.get(subscription__group=self.company).seat_type,
+            'technical_user',
+        )

@@ -110,6 +110,10 @@ class AdminGroupSubscriptionView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         group = get_object_or_404(Group, pk=self.kwargs['group_pk'])
+        if group.parent_id is not None:
+            raise serializers.ValidationError(
+                {'detail': 'Subscriptions must be managed on a top-level organization group.'}
+            )
         subscription = group.subscriptions.order_by('-starts_at', '-created_at').first()
         if subscription is None:
             subscription = UserSubscription.objects.create(
@@ -137,6 +141,15 @@ class AdminGroupContractListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         group = get_object_or_404(Group, pk=self.kwargs['group_pk'])
+        if group.parent_id is not None:
+            raise serializers.ValidationError(
+                {'detail': 'Contracts must be managed on a top-level organization group.'}
+            )
+        subscription = serializer.validated_data.get('subscription')
+        if subscription is not None and subscription.group_id != group.pk:
+            raise serializers.ValidationError(
+                {'subscription_id': 'The contract subscription must belong to this organization group.'}
+            )
         contract = serializer.save(group=group)
         record_admin_event(self.request, 'contract.created', contract, after=AdminContractSerializer(contract).data, group=group)
 
@@ -151,6 +164,11 @@ class AdminGroupContractDetailView(generics.RetrieveUpdateAPIView):
 
     def perform_update(self, serializer):
         contract = self.get_object()
+        subscription = serializer.validated_data.get('subscription', contract.subscription)
+        if subscription is not None and subscription.group_id != contract.group_id:
+            raise serializers.ValidationError(
+                {'subscription_id': 'The contract subscription must belong to this organization group.'}
+            )
         before = AdminContractSerializer(contract).data
         updated = serializer.save()
         after = AdminContractSerializer(updated).data
@@ -164,6 +182,10 @@ class AdminGroupSeatListCreateView(generics.ListCreateAPIView):
 
     def get_subscription(self):
         group = get_object_or_404(Group, pk=self.kwargs['group_pk'])
+        if group.parent_id is not None:
+            raise serializers.ValidationError(
+                {'detail': 'Seats must be managed on a top-level organization group.'}
+            )
         return group.subscriptions.order_by('-starts_at', '-created_at').first()
 
     def get_queryset(self):

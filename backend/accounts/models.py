@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.db.models import Q
 
 
 class SubscriptionType(models.TextChoices):
@@ -25,6 +26,16 @@ class SubscriptionStatus(models.TextChoices):
     PAST_DUE = 'past_due', 'Past due'
     CANCELED = 'canceled', 'Canceled'
     EXPIRED = 'expired', 'Expired'
+
+
+class SubscriptionAcquisition(models.TextChoices):
+    SELF_SERVICE = 'self_service', 'Self-service'
+    NEGOTIATED = 'negotiated', 'Negotiated enterprise contract'
+
+
+class SubscriptionSeatType(models.TextChoices):
+    TECHNICAL_USER = 'technical_user', 'Technical User'
+    TECHNICAL_ADMIN = 'technical_admin', 'Technical Admin'
 
 
 class ContractStatus(models.TextChoices):
@@ -112,11 +123,42 @@ class User(AbstractUser):
         return self.username
 
 
+class Plan(models.Model):
+    """A configurable Rosana plan; entitlements will be attached later."""
+
+    code = models.CharField(max_length=20, unique=True)
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    self_service_visible = models.BooleanField(default=True)
+    enterprise_available = models.BooleanField(default=True)
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
 class UserSubscription(models.Model):
-    """A dated subscription owned by a company-level Group."""
+    """A dated subscription owned by a top-level Group organization.
+
+    ``plan_code`` remains temporarily for backwards compatibility with the
+    existing admin API and data. New code should use ``plan``.
+    """
 
     group = models.ForeignKey('groups.Group', on_delete=models.CASCADE, related_name='subscriptions')
+    plan = models.ForeignKey(
+        'Plan', on_delete=models.PROTECT, null=True, blank=True, related_name='subscriptions',
+    )
     plan_code = models.CharField(max_length=20, choices=SubscriptionType.choices)
+    acquisition_type = models.CharField(
+        max_length=20,
+        choices=SubscriptionAcquisition.choices,
+        default=SubscriptionAcquisition.SELF_SERVICE,
+    )
     status = models.CharField(max_length=20, choices=SubscriptionStatus.choices, default=SubscriptionStatus.ACTIVE)
     starts_at = models.DateTimeField()
     ends_at = models.DateTimeField(blank=True, null=True)
@@ -129,6 +171,12 @@ class UserSubscription(models.Model):
     class Meta:
         ordering = ['-starts_at', '-created_at']
 
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if self.group_id and self.group.parent_id:
+            raise ValidationError({'group': 'A subscription must belong to a top-level organization group.'})
+
     def __str__(self):
         return f'{self.group.name}: {self.plan_code} ({self.status})'
 
@@ -137,6 +185,9 @@ class Contract(models.Model):
     """A lightweight company contract record pending finalized legal/billing requirements."""
 
     group = models.ForeignKey('groups.Group', on_delete=models.CASCADE, related_name='contracts')
+    subscription = models.ForeignKey(
+        UserSubscription, on_delete=models.SET_NULL, null=True, blank=True, related_name='contracts',
+    )
     title = models.CharField(max_length=255)
     status = models.CharField(max_length=20, choices=ContractStatus.choices, default=ContractStatus.DRAFT)
     starts_at = models.DateTimeField(blank=True, null=True)
@@ -149,6 +200,14 @@ class Contract(models.Model):
     class Meta:
         ordering = ['-created_at']
 
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if self.group_id and self.group.parent_id:
+            raise ValidationError({'group': 'A contract must belong to a top-level organization group.'})
+        if self.subscription_id and self.subscription.group_id != self.group_id:
+            raise ValidationError({'subscription': 'The contract subscription must belong to the same organization group.'})
+
     def __str__(self):
         return f'{self.group.name}: {self.title}'
 
@@ -158,13 +217,22 @@ class SubscriptionSeat(models.Model):
 
     subscription = models.ForeignKey(UserSubscription, on_delete=models.CASCADE, related_name='seats')
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subscription_seats')
+    seat_type = models.CharField(
+        max_length=20,
+        choices=SubscriptionSeatType.choices,
+        default=SubscriptionSeatType.TECHNICAL_USER,
+    )
     assigned_at = models.DateTimeField(auto_now_add=True)
     released_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         ordering = ['user__username']
         constraints = [
-            models.UniqueConstraint(fields=['subscription', 'user'], name='unique_subscription_seat_user'),
+            models.UniqueConstraint(
+                fields=['subscription', 'user'],
+                condition=Q(released_at__isnull=True),
+                name='unique_active_subscription_seat_user',
+            ),
         ]
 
     def __str__(self):

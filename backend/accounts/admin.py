@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
-from .models import AuditEvent, Contract, SubscriptionSeat, User, UserSubscription
+from .models import AuditEvent, Contract, Plan, SubscriptionSeat, User, UserSubscription
 from .staff import validate_staff_account_change
 
 
@@ -47,9 +47,16 @@ class UserAdmin(DjangoUserAdmin):
 
 @admin.register(UserSubscription)
 class UserSubscriptionAdmin(admin.ModelAdmin):
-    list_display = ('group', 'plan_code', 'status', 'seat_limit', 'starts_at', 'ends_at')
-    list_filter = ('plan_code', 'status')
+    list_display = ('group', 'plan', 'plan_code', 'acquisition_type', 'status', 'seat_limit', 'starts_at', 'ends_at')
+    list_filter = ('acquisition_type', 'plan_code', 'status')
     search_fields = ('group__name', 'external_reference')
+
+
+@admin.register(Plan)
+class PlanAdmin(admin.ModelAdmin):
+    list_display = ('code', 'name', 'self_service_visible', 'enterprise_available', 'active')
+    list_filter = ('self_service_visible', 'enterprise_available', 'active')
+    search_fields = ('code', 'name')
 
 
 @admin.register(Contract)
@@ -61,8 +68,8 @@ class ContractAdmin(admin.ModelAdmin):
 
 @admin.register(SubscriptionSeat)
 class SubscriptionSeatAdmin(admin.ModelAdmin):
-    list_display = ('subscription', 'user', 'assigned_at', 'released_at')
-    list_filter = ('released_at',)
+    list_display = ('subscription', 'user', 'seat_type', 'assigned_at', 'released_at')
+    list_filter = ('seat_type', 'released_at')
     search_fields = ('subscription__group__name', 'user__username', 'user__email')
 
 

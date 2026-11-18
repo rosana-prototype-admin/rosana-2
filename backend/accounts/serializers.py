@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from groups.models import Group
 
-from .models import AuditEvent, Contract, SubscriptionSeat, User, UserSubscription
+from .models import AuditEvent, Contract, Plan, SubscriptionSeat, User, UserSubscription
 from .staff import validate_staff_account_change
 
 
@@ -112,10 +112,15 @@ class AdminUserSerializer(serializers.ModelSerializer):
 
 
 class AdminSubscriptionSerializer(serializers.ModelSerializer):
+    plan_id = serializers.PrimaryKeyRelatedField(
+        source='plan', queryset=Plan.objects.filter(active=True),
+        required=False, allow_null=True,
+    )
+
     class Meta:
         model = UserSubscription
         fields = [
-            'id', 'plan_code', 'status', 'starts_at', 'ends_at',
+            'id', 'plan_id', 'plan_code', 'acquisition_type', 'status', 'starts_at', 'ends_at',
             'seat_limit', 'external_reference', 'notes', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
@@ -125,12 +130,23 @@ class AdminSubscriptionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Seat limit cannot be lower than the number of assigned seats.')
         return value
 
+    def validate(self, attrs):
+        plan = attrs.get('plan')
+        if plan is not None:
+            attrs['plan_code'] = plan.code
+        return attrs
+
 
 class AdminContractSerializer(serializers.ModelSerializer):
+    subscription_id = serializers.PrimaryKeyRelatedField(
+        source='subscription', queryset=UserSubscription.objects.all(),
+        required=False, allow_null=True,
+    )
+
     class Meta:
         model = Contract
         fields = [
-            'id', 'title', 'status', 'starts_at', 'ends_at',
+            'id', 'subscription_id', 'title', 'status', 'starts_at', 'ends_at',
             'external_reference', 'notes', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
@@ -163,7 +179,7 @@ class AdminSubscriptionSeatSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SubscriptionSeat
-        fields = ['id', 'user', 'user_id', 'assigned_at', 'released_at']
+        fields = ['id', 'user', 'user_id', 'seat_type', 'assigned_at', 'released_at']
         read_only_fields = ['id', 'assigned_at', 'released_at']
 
     def validate_user(self, user):
