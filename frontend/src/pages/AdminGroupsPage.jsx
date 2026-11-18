@@ -34,8 +34,11 @@ export default function AdminGroupsPage() {
 
   useEffect(() => {
     listAdminGroups().then((data) => {
-      setGroups(data)
-      if (data.length) setSelectedId(data[0].id)
+      // Subgroups belong to their top-level organization's subscription and
+      // cannot have independent subscription records.
+      const organizationGroups = data.filter((item) => item.parent === null)
+      setGroups(organizationGroups)
+      if (organizationGroups.length) setSelectedId(organizationGroups[0].id)
     }).catch(() => setError('Unable to load groups.'))
   }, [])
 
