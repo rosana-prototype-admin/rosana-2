@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
-from .models import AuditEvent, Contract, Plan, SubscriptionSeat, User, UserSubscription
+from .models import AuditEvent, Contract, Plan, PlanFeature, SubscriptionSeat, User, UserSubscription
 from .staff import validate_staff_account_change
 
 
@@ -57,6 +57,13 @@ class PlanAdmin(admin.ModelAdmin):
     list_display = ('code', 'name', 'self_service_visible', 'enterprise_available', 'active')
     list_filter = ('self_service_visible', 'enterprise_available', 'active')
     search_fields = ('code', 'name')
+
+
+@admin.register(PlanFeature)
+class PlanFeatureAdmin(admin.ModelAdmin):
+    list_display = ('plan', 'feature_code', 'enabled')
+    list_filter = ('enabled', 'plan')
+    search_fields = ('plan__code', 'feature_code')
 
 
 @admin.register(Contract)

@@ -142,6 +142,26 @@ class Plan(models.Model):
         return self.name
 
 
+class PlanFeature(models.Model):
+    """A feature entitlement assigned to a plan."""
+
+    plan = models.ForeignKey(Plan, on_delete=models.CASCADE, related_name='features')
+    feature_code = models.CharField(max_length=100)
+    enabled = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['plan', 'feature_code'],
+                name='unique_plan_feature',
+            ),
+        ]
+        ordering = ['plan_id', 'feature_code']
+
+    def __str__(self):
+        return f'{self.plan.code}: {self.feature_code}'
+
+
 class UserSubscription(models.Model):
     """A dated subscription owned by a top-level Group organization.
 

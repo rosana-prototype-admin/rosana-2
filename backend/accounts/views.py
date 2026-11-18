@@ -11,6 +11,7 @@ from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, Ou
 from groups.models import Group
 from accounts.audit import record_admin_event
 from .email import send_verification_email
+from .entitlements import can_use_feature, entitlement_context
 from .models import User
 from .password_reset import send_password_reset_email
 from .serializers import (
@@ -126,6 +127,44 @@ class MeView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class MyEntitlementsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    FEATURE_CODES = (
+        'view_existing',
+        'comment',
+        'analyze',
+        'manage_billing',
+        'manage_users',
+        'manage_groups',
+        'delete_resources',
+    )
+
+    def get(self, request):
+        groups = Group.objects.filter(
+            Q(admin=request.user) | Q(memberships__user=request.user),
+        ).select_related('parent').distinct()
+        records = []
+        for group in groups:
+            context = entitlement_context(request.user, group)
+            subscription = context.subscription
+            records.append({
+                'group_id': group.id,
+                'group_name': group.name,
+                'organization_id': context.group.id if context.group else None,
+                'organization_name': context.group.name if context.group else None,
+                'organization_role': context.organization_role,
+                'plan_code': subscription.plan_code if subscription else None,
+                'plan_name': subscription.plan.name if subscription and subscription.plan_id else None,
+                'access_state': context.access_state,
+                'has_technical_seat': context.has_technical_seat,
+                'features': {
+                    code: can_use_feature(request.user, code, group)
+                    for code in self.FEATURE_CODES
+                },
+            })
+        return Response({'entitlements': records})
 
 
 class ChangePasswordView(APIView):

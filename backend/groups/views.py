@@ -31,7 +31,7 @@ from .serializers import (
 
 def _group_members(group):
     """Flatten group members with system and organizational roles separated."""
-    def _entry(user, rosana_role, organizational_roles=None, permissions=None, permissions_locked=False):
+    def _entry(user, rosana_role, organization_role='commenter', organizational_roles=None, permissions=None, permissions_locked=False):
         return {
             'id': user.id,
             'username': user.username,
@@ -39,14 +39,21 @@ def _group_members(group):
             'last_name': user.last_name,
             'email': user.email,
             'rosana_role': rosana_role,
+            'organization_role': organization_role,
             'organizational_roles': organizational_roles or [],
             'permissions': permissions if permissions is not None else default_group_permissions(),
             'permissions_locked': permissions_locked,
         }
 
-    members = [_entry(group.admin, 'admin', permissions=all_group_permissions(), permissions_locked=True)]
+    members = [_entry(group.admin, 'admin', organization_role='technical_admin', permissions=all_group_permissions(), permissions_locked=True)]
     members += [
-        _entry(membership.user, 'member', membership.roles, membership.permissions)
+        _entry(
+            membership.user,
+            'member',
+            membership.organization_role,
+            membership.roles,
+            membership.permissions,
+        )
         for membership in group.memberships.select_related('user')
     ]
     return members
