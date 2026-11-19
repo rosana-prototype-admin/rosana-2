@@ -8,6 +8,7 @@ from rest_framework.response import Response
 
 from projects.models import Opportunity
 from groups.permissions import has_opportunity_permission
+from projects.permissions import entitled_opportunity_queryset
 
 from .models import Comment, CommentVote
 from .permissions import CommentAccessPermission, CommentAncestorScopedMixin
@@ -20,7 +21,9 @@ class CommentViewSet(CommentAncestorScopedMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = Comment.objects.filter(
-            project__opportunity__in=Opportunity.objects.visible_to(self.request.user)
+            project__opportunity__in=entitled_opportunity_queryset(
+                Opportunity.objects.visible_to(self.request.user), self.request.user
+            )
         ).select_related('author').annotate(
             up_count=Count('votes', filter=Q(votes__value=1), distinct=True),
             down_count=Count('votes', filter=Q(votes__value=-1), distinct=True),

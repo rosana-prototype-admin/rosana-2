@@ -104,6 +104,40 @@ def entitlement_context(user, group=None):
     return EntitlementContext(user, None, None, None, False, AccessState.UNLICENSED)
 
 
+def user_entitlement_contexts(user):
+    """Return the user's distinct organization contexts with subscriptions."""
+    if user is None or not user.is_authenticated or not user.is_active:
+        return []
+    groups = list(Membership.objects.filter(user=user).values_list('group_id', flat=True))
+    groups += list(Group.objects.filter(admin=user).values_list('id', flat=True))
+    contexts = []
+    seen_organizations = set()
+    for group_id in groups:
+        group = Group.objects.select_related('parent').get(pk=group_id)
+        context = entitlement_context(user, group)
+        organization_id = context.group.id if context.group else None
+        if context.subscription is not None and organization_id not in seen_organizations:
+            contexts.append(context)
+            seen_organizations.add(organization_id)
+    return contexts
+
+
+def user_entitlement_plan_codes(user):
+    return {
+        context.subscription.plan_code
+        for context in user_entitlement_contexts(user)
+        if (
+            context.access_state == AccessState.ACTIVE
+            and context.subscription.plan_code
+            and context.organization_role in {OrganizationRole.TECHNICAL_ADMIN, OrganizationRole.TECHNICAL_USER}
+            and (
+                context.organization_role == OrganizationRole.TECHNICAL_ADMIN
+                or context.has_technical_seat
+            )
+        )
+    }
+
+
 def plan_feature_enabled(subscription, feature_code):
     if subscription is None or subscription.plan_id is None:
         return False
@@ -133,3 +167,29 @@ def can_use_feature(user, feature_code, group=None):
     if feature_code == 'analyze' and role == OrganizationRole.TECHNICAL_USER and not context.has_technical_seat:
         return False
     return plan_feature_enabled(context.subscription, feature_code)
+
+
+def can_view_existing(user, group=None):
+    """Whether a user may view resources belonging to an organization.
+
+    The first three months after expiry are deliberately read-only. A user
+    with no subscription context is left to the legacy resource-permission
+    checks so existing, not-yet-migrated organizations continue to work.
+    """
+    context = entitlement_context(user, group)
+    if context.subscription is None:
+        return True
+    if user.is_staff:
+        return True
+    if context.organization_role not in {
+        OrganizationRole.FINANCIAL_ADMIN,
+        OrganizationRole.TECHNICAL_ADMIN,
+        OrganizationRole.TECHNICAL_USER,
+        OrganizationRole.COMMENTER,
+    }:
+        return False
+    if context.access_state == AccessState.EXPIRED_GRACE:
+        return True
+    if context.access_state != AccessState.ACTIVE:
+        return False
+    return plan_feature_enabled(context.subscription, 'view_existing')

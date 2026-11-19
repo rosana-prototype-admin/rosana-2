@@ -6,6 +6,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from .models import CMF, CMFUserPermission
+from accounts.entitlements import user_entitlement_plan_codes
 from .config import CMF_FILTER_CONFIG, CMF_LOWER_LIMIT, CMF_MATH_CONFIG, CMF_MOD_CODE_OPTIONS, CMF_UPPER_LIMIT
 from .permissions import CMFAccessPermission
 from groups.permissions import has_any_group_permission, user_has_any_group_membership
@@ -17,14 +18,22 @@ class CMFViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, CMFAccessPermission]
 
     def get_queryset(self):
-        plan_field = CMFUserPermission.field_for_user(self.request.user)
-        if plan_field:
-            builtin_visibility = (
-                Q(is_builtin=True, user_permissions__isnull=True)
-                | Q(is_builtin=True, **{f'user_permissions__{plan_field}': True})
+        plan_fields = [
+            plan_code for plan_code in user_entitlement_plan_codes(self.request.user)
+            if plan_code in CMFUserPermission.PLAN_FIELDS
+        ]
+        builtin_visibility = Q(is_builtin=True, user_permissions__isnull=True)
+        if plan_fields:
+            permission_query = Q()
+            for plan_field in plan_fields:
+                permission_query |= Q(**{plan_field: True})
+            builtin_visibility |= Q(
+                is_builtin=True,
+                user_permissions__in=[
+                    permission.pk
+                    for permission in CMFUserPermission.objects.filter(permission_query)
+                ],
             )
-        else:
-            builtin_visibility = Q(is_builtin=True, user_permissions__isnull=True)
         return CMF.objects.filter(
             builtin_visibility
             | models.Q(is_builtin=False)

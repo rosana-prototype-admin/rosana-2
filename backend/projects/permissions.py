@@ -3,26 +3,61 @@ from django.db.models import Q
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
+from accounts.entitlements import can_use_feature, can_view_existing, entitlement_context, subscription_for_group
 from groups.permissions import has_group_permission, has_opportunity_permission, user_has_group_membership
 
 
 def can_read(user, opportunity):
-    return (
+    legacy_access = (
         opportunity.manager_id == user.pk
         or opportunity.delegates.filter(pk=user.pk).exists()
         or opportunity.stakeholders.filter(pk=user.pk).exists()
         or opportunity.assoc_agencies.filter(Q(admin_id=user.pk) | Q(memberships__user_id=user.pk)).exists()
     )
+    if not legacy_access:
+        return False
+    subscription = subscription_for_group(opportunity.lead_agency)
+    if subscription is None:
+        return True
+    # Users outside the owning organization may still be invited external
+    # reviewers, including during the post-expiry period.
+    context = entitlement_context(user, opportunity.lead_agency)
+    if context.organization_role is None:
+        return True
+    return can_view_existing(user, opportunity.lead_agency)
 
 
 def can_write(user, opportunity):
-    return opportunity.manager_id == user.pk or opportunity.delegates.filter(pk=user.pk).exists()
+    legacy_write = opportunity.manager_id == user.pk or opportunity.delegates.filter(pk=user.pk).exists()
+    if not legacy_write:
+        return False
+    subscription = subscription_for_group(opportunity.lead_agency)
+    return subscription is None or can_use_feature(user, 'analyze', opportunity.lead_agency)
+
+
+def can_comment(user, opportunity):
+    """Whether the user may comment under the current subscription rules."""
+    subscription = subscription_for_group(opportunity.lead_agency)
+    if subscription is None:
+        return True
+    context = entitlement_context(user, opportunity.lead_agency)
+    # An invited user from another organization retains review commenting
+    # access throughout the expiration lifecycle.
+    if context.organization_role is None:
+        return True
+    return can_use_feature(user, 'comment', opportunity.lead_agency)
 
 
 def can_write_with_permission(user, opportunity, permission_code):
     if not can_write(user, opportunity):
         return False
     return has_opportunity_permission(user, opportunity, permission_code)
+
+
+def entitled_opportunity_queryset(queryset, user):
+    """Filter legacy visibility through organization entitlements."""
+    allowed_ids = [opportunity.pk for opportunity in queryset if can_read(user, opportunity)]
+    return queryset.filter(pk__in=allowed_ids)
 
 
 def permission_for_view(view):
@@ -75,7 +110,9 @@ class ProjectAncestorScopedMixin:
         from .models import Opportunity
 
         return get_object_or_404(
-            Opportunity.objects.visible_to(self.request.user),
+            entitled_opportunity_queryset(
+                Opportunity.objects.visible_to(self.request.user), self.request.user
+            ),
             pk=self.kwargs['opportunity_pk'],
         )
 
@@ -93,7 +130,11 @@ class SiteAncestorScopedMixin:
         from .models import Opportunity, Project
 
         return get_object_or_404(
-            Project.objects.filter(opportunity__in=Opportunity.objects.visible_to(self.request.user)),
+            Project.objects.filter(
+                opportunity__in=entitled_opportunity_queryset(
+                    Opportunity.objects.visible_to(self.request.user), self.request.user
+                )
+            ),
             pk=self.kwargs['project_pk'],
         )
 
@@ -116,6 +157,10 @@ class StrategyAncestorScopedMixin:
         from .models import Opportunity, Site
 
         return get_object_or_404(
-            Site.objects.filter(project__opportunity__in=Opportunity.objects.visible_to(self.request.user)),
+            Site.objects.filter(
+                project__opportunity__in=entitled_opportunity_queryset(
+                    Opportunity.objects.visible_to(self.request.user), self.request.user
+                )
+            ),
             pk=self.kwargs['site_pk'],
         )

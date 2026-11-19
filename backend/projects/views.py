@@ -16,7 +16,9 @@ from .permissions import (
     StrategyAncestorScopedMixin,
     can_invite,
     can_manage_roles,
+    entitled_opportunity_queryset,
     has_group_permission,
+    has_opportunity_permission,
     user_has_group_membership,
 )
 from .serializers import (
@@ -55,13 +57,20 @@ class OpportunityViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return (
-            Opportunity.objects.visible_to(self.request.user)
+            entitled_opportunity_queryset(
+                Opportunity.objects.visible_to(self.request.user), self.request.user
+            )
             .select_related('focus_area', 'specific_focus_area', 'lead_agency', 'manager')
             .prefetch_related('assoc_agencies', 'delegates', 'stakeholders')
         )
 
     def perform_create(self, serializer):
         lead_agency = serializer.validated_data['lead_agency']
+        from accounts.entitlements import can_use_feature, subscription_for_group
+        if subscription_for_group(lead_agency) is not None and not can_use_feature(
+            self.request.user, 'analyze', lead_agency
+        ):
+            raise PermissionDenied('Your subscription does not allow creating Opportunities.')
         if user_has_group_membership(self.request.user, lead_agency) and not has_group_permission(
             self.request.user, lead_agency, 'create_modify_opportunity'
         ):
@@ -73,6 +82,14 @@ class OpportunityViewSet(viewsets.ModelViewSet):
         # Cloning only requires read access: it never mutates the source
         # opportunity, only creates a brand-new one the requester can work with.
         opportunity = get_object_or_404(self.get_queryset(), pk=pk)
+        from accounts.entitlements import can_use_feature, subscription_for_group
+        if subscription_for_group(opportunity.lead_agency) is not None and (
+            not can_use_feature(self.request.user, 'analyze', opportunity.lead_agency)
+            or not has_opportunity_permission(
+                self.request.user, opportunity, 'create_modify_opportunity'
+            )
+        ):
+            raise PermissionDenied('Your subscription does not allow cloning this Opportunity.')
         cloned = clone_opportunity(opportunity, requester=request.user)
         return Response(OpportunitySerializer(cloned).data, status=201)
 
@@ -160,7 +177,9 @@ class ProjectViewSet(ProjectAncestorScopedMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = Project.objects.filter(
-            opportunity__in=Opportunity.objects.visible_to(self.request.user)
+            opportunity__in=entitled_opportunity_queryset(
+                Opportunity.objects.visible_to(self.request.user), self.request.user
+            )
         ).select_related('opportunity')
         opportunity_pk = self.kwargs.get('opportunity_pk')
         if opportunity_pk is not None:
@@ -202,7 +221,9 @@ class SiteViewSet(SiteAncestorScopedMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = Site.objects.filter(
-            project__opportunity__in=Opportunity.objects.visible_to(self.request.user)
+            project__opportunity__in=entitled_opportunity_queryset(
+                Opportunity.objects.visible_to(self.request.user), self.request.user
+            )
         ).select_related(
             'project',
             'project__opportunity',
@@ -245,7 +266,9 @@ class StrategyViewSet(
 
     def get_queryset(self):
         queryset = Strategy.objects.filter(
-            site__project__opportunity__in=Opportunity.objects.visible_to(self.request.user)
+            site__project__opportunity__in=entitled_opportunity_queryset(
+                Opportunity.objects.visible_to(self.request.user), self.request.user
+            )
         ).select_related(
             'site',
             'site__project',
@@ -267,5 +290,12 @@ class StrategyViewSet(
 
     def list(self, request, *args, **kwargs):
         if 'site_pk' in self.kwargs:
-            self.get_ancestor().sync_strategies()
+            site = self.get_ancestor()
+            from accounts.entitlements import can_use_feature, subscription_for_group
+            opportunity = site.get_opportunity()
+            lead_agency = opportunity.lead_agency
+            if subscription_for_group(lead_agency) is None or can_use_feature(
+                request.user, 'analyze', lead_agency
+            ):
+                site.sync_strategies()
         return super().list(request, *args, **kwargs)

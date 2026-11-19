@@ -4,7 +4,7 @@ from rest_framework.permissions import BasePermission
 
 from projects.models import Opportunity, Project
 from groups.permissions import has_opportunity_permission
-from projects.permissions import can_read
+from projects.permissions import can_comment, can_read, entitled_opportunity_queryset
 
 
 class CommentAccessPermission(BasePermission):
@@ -25,6 +25,8 @@ class CommentAccessPermission(BasePermission):
     def has_object_permission(self, request, view, obj):
         opportunity = obj.get_opportunity()
         if not can_read(request.user, opportunity):
+            return False
+        if not can_comment(request.user, opportunity):
             return False
         if view.action in self.EDIT_ONLY_ACTIONS:
             return obj.author_id == request.user.pk
@@ -47,7 +49,11 @@ class CommentAncestorScopedMixin:
 
     def get_ancestor(self):
         return get_object_or_404(
-            Project.objects.filter(opportunity__in=Opportunity.objects.visible_to(self.request.user)),
+            Project.objects.filter(
+                opportunity__in=entitled_opportunity_queryset(
+                    Opportunity.objects.visible_to(self.request.user), self.request.user
+                )
+            ),
             pk=self.kwargs['project_pk'],
         )
 
@@ -55,6 +61,8 @@ class CommentAncestorScopedMixin:
         project = self.get_ancestor()
         if not project.comments_enabled:
             raise PermissionDenied('Comments are disabled for this project.')
+        if not can_comment(self.request.user, project.opportunity):
+            raise PermissionDenied('Your subscription does not allow commenting on this Opportunity.')
         if not has_opportunity_permission(
             self.request.user, project.opportunity, 'comment_existing_resources'
         ):

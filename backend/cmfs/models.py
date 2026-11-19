@@ -242,5 +242,12 @@ class CMFUserPermission(models.Model):
         return plan if plan in cls.PLAN_FIELDS else None
 
     def allows(self, user):
-        plan_field = self.field_for_user(user)
-        return bool(plan_field and getattr(self, plan_field))
+        from accounts.entitlements import user_entitlement_plan_codes
+
+        entitlement_plan_codes = user_entitlement_plan_codes(user)
+        if entitlement_plan_codes:
+            return any(
+                plan_code in self.PLAN_FIELDS and getattr(self, plan_code)
+                for plan_code in entitlement_plan_codes
+            )
+        return False
