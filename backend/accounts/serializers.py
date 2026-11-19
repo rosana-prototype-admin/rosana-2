@@ -112,6 +112,12 @@ class AdminUserSerializer(serializers.ModelSerializer):
 
 
 class AdminSubscriptionSerializer(serializers.ModelSerializer):
+    # Older subscription records and older frontend bundles may represent
+    # optional text fields as JSON null. Normalize those values rather than
+    # rejecting an otherwise valid subscription update.
+    external_reference = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    notes = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
     plan_id = serializers.PrimaryKeyRelatedField(
         source='plan', queryset=Plan.objects.filter(active=True),
         required=False, allow_null=True,
@@ -134,6 +140,10 @@ class AdminSubscriptionSerializer(serializers.ModelSerializer):
         plan = attrs.get('plan')
         if plan is not None:
             attrs['plan_code'] = plan.code
+        if attrs.get('external_reference') is None:
+            attrs['external_reference'] = ''
+        if attrs.get('notes') is None:
+            attrs['notes'] = ''
         return attrs
 
 
