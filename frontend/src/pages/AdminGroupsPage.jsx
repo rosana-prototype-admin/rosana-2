@@ -23,6 +23,19 @@ function isoValue(value) {
   return value ? new Date(value).toISOString() : null
 }
 
+function requestError(error, fallback) {
+  const data = error.response?.data
+  if (typeof data?.detail === 'string') return data.detail
+  if (data && typeof data === 'object') {
+    const messages = Object.entries(data).flatMap(([field, value]) => {
+      const detail = Array.isArray(value) ? value.join(', ') : String(value)
+      return `${field}: ${detail}`
+    })
+    if (messages.length) return messages.join(' — ')
+  }
+  return fallback
+}
+
 export default function AdminGroupsPage() {
   const [groups, setGroups] = useState([])
   const [selectedId, setSelectedId] = useState(null)
@@ -66,11 +79,11 @@ export default function AdminGroupsPage() {
         plan_code: form.get('plan_code'), status: form.get('status'),
         seat_limit: Number(form.get('seat_limit')), starts_at: isoValue(form.get('starts_at')),
         ends_at: isoValue(form.get('ends_at')), external_reference: form.get('external_reference'),
-        notes: form.get('notes'),
+        notes: form.get('notes') || '',
       })
       setSubscription(updated)
       setMessage('Subscription saved.')
-    } catch { setError('Unable to save the subscription.') }
+    } catch (requestErrorValue) { setError(requestError(requestErrorValue, 'Unable to save the subscription.')) }
   }
 
   async function addSeat(event) {
@@ -124,6 +137,7 @@ export default function AdminGroupsPage() {
               <label>Starts<input name="starts_at" type="datetime-local" defaultValue={dateValue(subscription.starts_at)} /></label>
               <label>Ends<input name="ends_at" type="datetime-local" defaultValue={dateValue(subscription.ends_at)} /></label>
               <label>Reference<input name="external_reference" defaultValue={subscription.external_reference || ''} /></label>
+              <label>Notes<textarea name="notes" defaultValue={subscription.notes || ''} rows="3" /></label>
             </div>
             <button type="submit">Save subscription</button>
           </form>
