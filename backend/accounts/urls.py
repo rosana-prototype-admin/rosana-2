@@ -30,6 +30,7 @@ from .admin_api import (
     AdminUserDetailView,
     AdminUserListView,
 )
+from .organization_api import OrganizationSubscriptionUsersView, OrganizationSubscriptionView
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
@@ -49,6 +50,8 @@ urlpatterns = [
     path('admin/audit/', AdminAuditEventListView.as_view(), name='admin-audit-list'),
     path('me/', MeView.as_view(), name='me'),
     path('me/entitlements/', MyEntitlementsView.as_view(), name='my-entitlements'),
+    path('organizations/<int:group_pk>/subscription/', OrganizationSubscriptionView.as_view(), name='organization-subscription'),
+    path('organizations/<int:group_pk>/subscription/users/', OrganizationSubscriptionUsersView.as_view(), name='organization-subscription-users'),
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
     path('sessions/revoke-all/', RevokeAllSessionsView.as_view(), name='revoke-all-sessions'),
     path('deactivate/', DeactivateAccountView.as_view(), name='deactivate-account'),

@@ -1,0 +1,27 @@
+.subscription-page { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+.subscription-page-heading { display: flex; justify-content: space-between; align-items: start; gap: 1rem; margin-bottom: 1.5rem; }
+.subscription-page-heading h1 { margin: 0 0 .35rem; }
+.subscription-page-heading p { margin: 0; color: #64748b; }
+.subscription-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+.subscription-organization-list { display: grid; gap: .5rem; }
+.subscription-organization-list button { display: grid; gap: .25rem; text-align: left; padding: .75rem; border: 1px solid #dbe3ec; border-radius: .5rem; background: white; cursor: pointer; }
+.subscription-organization-list button.selected { border-color: #2563eb; box-shadow: 0 0 0 1px #2563eb; }
+.subscription-organization-list span { color: #64748b; font-size: .85rem; text-transform: capitalize; }
+.subscription-content { display: grid; gap: 1.25rem; }
+.subscription-card { background: white; border: 1px solid #dbe3ec; border-radius: .65rem; padding: 1.25rem; }
+.subscription-card h2 { margin-top: 0; }
+.subscription-note, .subscription-readonly { color: #64748b; font-size: .9rem; }
+.subscription-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; margin: 1rem 0 1.25rem; }
+.subscription-summary div { background: #f8fafc; border-radius: .5rem; padding: .75rem; }
+.subscription-summary span { display: block; color: #64748b; font-size: .8rem; margin-bottom: .25rem; }
+.subscription-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.subscription-form h3, .subscription-form button, .subscription-readonly { grid-column: 1 / -1; }
+.subscription-form label { display: grid; gap: .35rem; font-weight: 600; font-size: .9rem; }
+.subscription-form input, .subscription-form select { min-height: 2.25rem; border: 1px solid #cbd5e1; border-radius: .35rem; padding: .35rem .5rem; font: inherit; }
+.subscription-form button { justify-self: start; padding: .55rem 1rem; border: 0; border-radius: .35rem; background: #2563eb; color: white; cursor: pointer; }
+.subscription-form button:disabled { opacity: .6; cursor: wait; }
+.subscription-user-table-wrap { overflow-x: auto; }
+.subscription-user-table { width: 100%; border-collapse: collapse; }
+.subscription-user-table th, .subscription-user-table td { padding: .65rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
+.subscription-user-table th { color: #475569; font-size: .85rem; }
+@media (max-width: 720px) { .subscription-page { padding: 1rem; } .subscription-page-heading, .subscription-layout { display: block; } .subscription-organization-list { margin: 1rem 0; } .subscription-summary, .subscription-form { grid-template-columns: 1fr; } }

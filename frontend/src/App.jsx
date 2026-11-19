@@ -23,6 +23,7 @@ import SettingsPage from './pages/SettingsPage'
 import AdminUsersPage from './pages/AdminUsersPage'
 import AdminGroupsPage from './pages/AdminGroupsPage'
 import AdminAuditPage from './pages/AdminAuditPage'
+import SubscriptionPage from './pages/SubscriptionPage'
 
 function App() {
   return (
@@ -51,6 +52,7 @@ function App() {
           <Route path="/groups/:id" element={<GroupEditorPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/subscription" element={<SubscriptionPage />} />
           <Route element={<AdminRoute />}>
             <Route path="/admin/users" element={<AdminUsersPage />} />
             <Route path="/admin/subscriptions" element={<AdminGroupsPage />} />

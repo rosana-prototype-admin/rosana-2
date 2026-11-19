@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { listNotifications } from '../api/notifications'
+import { getMyEntitlements } from '../api/users'
 import { useAuth } from '../hooks/useAuth'
 import './AppHeader.css'
 
@@ -11,6 +12,7 @@ export default function AppHeader() {
   const navigate = useNavigate()
   const location = useLocation()
   const [pendingCount, setPendingCount] = useState(0)
+  const [canViewSubscription, setCanViewSubscription] = useState(false)
 
   const refreshPendingCount = useCallback(async () => {
     try {
@@ -33,6 +35,20 @@ export default function AppHeader() {
   }, [refreshPendingCount, location])
 
   useEffect(() => {
+    let cancelled = false
+    getMyEntitlements().then((data) => {
+      if (!cancelled) {
+        setCanViewSubscription((data.entitlements || []).some((item) => (
+          item.organization_role === 'financial_admin' || item.organization_role === 'technical_admin'
+        )))
+      }
+    }).catch(() => {
+      if (!cancelled) setCanViewSubscription(false)
+    })
+    return () => { cancelled = true }
+  }, [location])
+
+  useEffect(() => {
     const interval = setInterval(refreshPendingCount, POLL_INTERVAL_MS)
     return () => clearInterval(interval)
   }, [refreshPendingCount])
@@ -45,12 +61,13 @@ export default function AppHeader() {
   return (
     <header className="app-header">
       <Link to="/" className="app-header-brand">
-        Rosana
+        Rosanå
       </Link>
       <nav className="app-header-nav">
         <Link to="/opportunities">Opportunities</Link>
         <Link to="/groups">Groups</Link>
         <Link to="/cmfs">Custom CMFs</Link>
+        {canViewSubscription && <Link to="/subscription">Subscription</Link>}
         {user?.is_staff && <Link to="/admin/users">Admin</Link>}
         <Link to="/notifications" className="app-header-notifications">
           Notifications

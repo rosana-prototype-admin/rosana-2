@@ -137,6 +137,41 @@ class AdminSubscriptionSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class OrganizationSubscriptionSerializer(serializers.ModelSerializer):
+    """Safe organization-facing subscription fields.
+
+    Payment credentials, negotiated pricing, and internal references are
+    deliberately excluded until a billing provider and contract workflow are
+    selected.
+    """
+    plan_id = serializers.PrimaryKeyRelatedField(
+        source='plan', queryset=Plan.objects.filter(active=True),
+        required=False, allow_null=True,
+    )
+    plan_name = serializers.CharField(source='plan.name', read_only=True, allow_null=True)
+
+    class Meta:
+        model = UserSubscription
+        fields = [
+            'id', 'plan_id', 'plan_code', 'plan_name', 'acquisition_type', 'status',
+            'starts_at', 'ends_at', 'seat_limit', 'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'plan_code', 'plan_name', 'acquisition_type', 'created_at', 'updated_at',
+        ]
+
+    def validate_seat_limit(self, value):
+        if self.instance and value < self.instance.seats.filter(released_at__isnull=True).count():
+            raise serializers.ValidationError('Seat limit cannot be lower than assigned seats.')
+        return value
+
+    def validate(self, attrs):
+        plan = attrs.get('plan')
+        if plan is not None:
+            attrs['plan_code'] = plan.code
+        return attrs
+
+
 class AdminContractSerializer(serializers.ModelSerializer):
     subscription_id = serializers.PrimaryKeyRelatedField(
         source='subscription', queryset=UserSubscription.objects.all(),

@@ -193,3 +193,24 @@ def can_view_existing(user, group=None):
     if context.access_state != AccessState.ACTIVE:
         return False
     return plan_feature_enabled(context.subscription, 'view_existing')
+
+
+def can_view_billing(user, group=None):
+    """Whether the user may view organization subscription information."""
+    context = entitlement_context(user, group)
+    if user is not None and user.is_staff and user.is_active:
+        return True
+    return context.organization_role in {
+        OrganizationRole.FINANCIAL_ADMIN,
+        OrganizationRole.TECHNICAL_ADMIN,
+    }
+
+
+def can_change_billing(user, group=None):
+    """Whether the user may change subscription records without payment access."""
+    context = entitlement_context(user, group)
+    if user is not None and user.is_staff and user.is_active:
+        return True
+    if context.organization_role != OrganizationRole.FINANCIAL_ADMIN:
+        return False
+    return context.access_state != AccessState.ARCHIVE_DUE
