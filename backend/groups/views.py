@@ -17,6 +17,7 @@ from .permissions import (
     all_group_permissions,
     default_group_permissions,
     has_group_permission,
+    has_group_feature,
 )
 from .serializers import (
     GroupInviteSerializer,
@@ -112,6 +113,8 @@ class GroupViewSet(viewsets.ModelViewSet):
         parent = serializer.validated_data.get('parent')
         if parent is not None and parent.admin_id != self.request.user.pk:
             raise PermissionDenied("You must be the parent group's admin to create a subgroup.")
+        if parent is not None and not has_group_feature(self.request.user, parent, 'manage_groups'):
+            raise PermissionDenied('Your subscription does not allow creating subgroups.')
         serializer.save(admin=self.request.user)
 
     @action(detail=True, methods=['get'], url_path='members')

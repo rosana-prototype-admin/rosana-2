@@ -1,12 +1,14 @@
 from django.db import IntegrityError, transaction
+from datetime import timedelta
+
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from accounts.models import AuditEvent, User
+from accounts.models import AuditEvent, Plan, PlanFeature, User, UserSubscription
 from geo.models import Jcode
 
-from .models import Group, Membership
+from .models import Group, Membership, OrganizationRole
 
 
 class GroupsTestCase(APITestCase):
@@ -206,6 +208,60 @@ class GroupCrudTests(GroupsTestCase):
         Membership.objects.create(user=self.other, group=group)
         self.client.force_authenticate(user=self.other)
         response = self.client.patch(f'/api/groups/{group.pk}/', {'name': 'Hacked'})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class SubscribedGroupEntitlementTests(GroupsTestCase):
+    def setUp(self):
+        super().setUp()
+        self.group = Group.objects.create(name='Subscribed Agency', admin=self.admin)
+        self.plan = Plan.objects.create(code='group-test', name='Group Test Plan')
+        for feature in ('manage_users', 'manage_groups'):
+            PlanFeature.objects.create(plan=self.plan, feature_code=feature)
+        self.subscription = UserSubscription.objects.create(
+            group=self.group,
+            plan=self.plan,
+            plan_code='group-test',
+            starts_at=timezone.now() - timedelta(days=1),
+        )
+
+    def test_delegated_permission_does_not_upgrade_commenter_to_user_admin(self):
+        Membership.objects.create(
+            user=self.other,
+            group=self.group,
+            permissions={'add_new_user': True},
+        )
+        target = User.objects.create_user(username='target', email='target@example.com', password='pw')
+        self.client.force_authenticate(user=self.other)
+        response = self.client.post(
+            f'/api/groups/{self.group.pk}/invite/', {'user_id': target.pk}, format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_technical_admin_with_delegated_permission_can_edit_member(self):
+        Membership.objects.create(
+            user=self.other,
+            group=self.group,
+            organization_role=OrganizationRole.TECHNICAL_ADMIN,
+            permissions={'change_user_permissions': True},
+        )
+        target = User.objects.create_user(username='target', email='target@example.com', password='pw')
+        Membership.objects.create(user=target, group=self.group)
+        self.client.force_authenticate(user=self.other)
+        response = self.client.patch(
+            f'/api/groups/{self.group.pk}/members/{target.pk}/',
+            {'permissions': {'comment_existing_resources': True}},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_expired_group_admin_cannot_rename_group(self):
+        self.subscription.ends_at = timezone.now() - timedelta(days=100)
+        self.subscription.save(update_fields=['ends_at'])
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(
+            f'/api/groups/{self.group.pk}/', {'name': 'Renamed'}, format='json'
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
