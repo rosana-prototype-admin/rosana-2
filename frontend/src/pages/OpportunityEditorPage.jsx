@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { createOpportunity, getOpportunity, updateOpportunity } from '../api/opportunities'
 import { listFocusAreaChildren, listFocusAreaOptions } from '../api/focusAreas'
 import { getGroup, listGroupMembers } from '../api/groups'
+import { getMyEntitlements } from '../api/users'
 import { createProject, deleteProject, listProjects } from '../api/projects'
 import DataTable from '../components/DataTable'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -38,6 +39,7 @@ export default function OpportunityEditorPage() {
   const [comment, setComment] = useState('')
   const [statusValue, setStatusValue] = useState('drafting')
   const [leadAgency, setLeadAgency] = useState(null)
+  const [leadAgencyAccessMessage, setLeadAgencyAccessMessage] = useState('')
   const [assocAgencies, setAssocAgencies] = useState([])
   const [managerCandidates, setManagerCandidates] = useState([])
   const [isLoadingManagerCandidates, setIsLoadingManagerCandidates] = useState(false)
@@ -70,6 +72,26 @@ export default function OpportunityEditorPage() {
 
   const canWrite =
     isNew || (opportunity && user && (opportunity.manager === user.id || opportunity.delegates?.includes(user.id)))
+  const canSubmitOpportunity = canWrite && !leadAgencyAccessMessage
+
+  useEffect(() => {
+    if (!isNew || !leadAgency) {
+      return undefined
+    }
+    let cancelled = false
+    getMyEntitlements().then((records) => {
+      if (cancelled) return
+      const entitlement = records.find((record) => String(record.group_id) === String(leadAgency.id))
+      if (entitlement && entitlement.features?.create_opportunity === false) {
+        setLeadAgencyAccessMessage('You do not have permission to create Opportunities for this Group.')
+      } else {
+        setLeadAgencyAccessMessage('')
+      }
+    }).catch(() => {
+      if (!cancelled) setLeadAgencyAccessMessage('')
+    })
+    return () => { cancelled = true }
+  }, [isNew, leadAgency])
 
   const loadChildren = useCallback(async (parentId) => {
     if (!parentId) {
@@ -228,6 +250,8 @@ export default function OpportunityEditorPage() {
 
   function handleSelectLeadAgency(group) {
     setLeadAgency(group)
+    setSaveError('')
+    setLeadAgencyAccessMessage('Checking access…')
   }
 
   function handleAddAssocAgency(group) {
@@ -260,6 +284,10 @@ export default function OpportunityEditorPage() {
 
     if (!title.trim()) {
       setSaveError('Title is required.')
+      return
+    }
+    if (leadAgencyAccessMessage) {
+      setSaveError(leadAgencyAccessMessage)
       return
     }
     if (!leadAgency) {
@@ -488,7 +516,7 @@ export default function OpportunityEditorPage() {
               <span className="chip">
                 {leadAgency.name}
                 {canWrite && (
-                  <button type="button" className="chip-remove" onClick={() => setLeadAgency(null)}>
+                  <button type="button" className="chip-remove" onClick={() => { setLeadAgency(null); setLeadAgencyAccessMessage('') }}>
                     ×
                   </button>
                 )}
@@ -497,6 +525,7 @@ export default function OpportunityEditorPage() {
           ) : (
             canWrite && <GroupSearchField onSelect={handleSelectLeadAgency} placeholder="Search agencies…" />
           )}
+          {leadAgencyAccessMessage && <p className="form-error" role="alert">{leadAgencyAccessMessage}</p>}
         </div>
 
         <label className="editor-field">
@@ -592,7 +621,7 @@ export default function OpportunityEditorPage() {
           </dl>
         )}
 
-        {canWrite && (
+        {canSubmitOpportunity && (
           <button type="submit" className="editor-save" disabled={(!isNew && !isDirty) || isSaving || isLoadingChildren}>
             {isSaving ? 'Saving…' : isNew ? 'Create' : 'Save'}
           </button>

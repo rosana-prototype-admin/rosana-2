@@ -156,6 +156,7 @@ class MyEntitlementsView(APIView):
         'manage_users',
         'manage_groups',
         'delete_resources',
+        'create_opportunity',
     )
 
     def get(self, request):
@@ -167,6 +168,12 @@ class MyEntitlementsView(APIView):
         for group in groups:
             context = entitlement_context(request.user, group)
             subscription = context.subscription
+            from groups.permissions import has_group_permission
+            can_create_opportunity = can_use_feature(request.user, 'analyze', group)
+            if group.memberships.filter(user=request.user).exists():
+                can_create_opportunity = can_create_opportunity and has_group_permission(
+                    request.user, group, 'create_modify_opportunity'
+                )
             records.append({
                 'group_id': group.id,
                 'group_name': group.name,
@@ -182,6 +189,7 @@ class MyEntitlementsView(APIView):
                     for code in self.FEATURE_CODES
                 },
             })
+            records[-1]['features']['create_opportunity'] = can_create_opportunity
         return Response({'entitlements': records})
 
 
