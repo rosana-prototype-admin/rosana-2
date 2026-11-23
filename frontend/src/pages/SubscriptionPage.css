@@ -24,4 +24,9 @@
 .subscription-user-table { width: 100%; border-collapse: collapse; }
 .subscription-user-table th, .subscription-user-table td { padding: .65rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
 .subscription-user-table th { color: #475569; font-size: .85rem; }
+.seat-assignment-controls { display: flex; align-items: end; gap: 12px; margin: 16px 0; flex-wrap: wrap; }
+.seat-assignment-controls label { min-width: 280px; display: grid; gap: .35rem; font-weight: 600; font-size: .9rem; }
+.seat-assignment-controls select { min-height: 2.25rem; border: 1px solid #cbd5e1; border-radius: .35rem; padding: .35rem .5rem; font: inherit; }
+.seat-assignment-controls button, .subscription-user-table button { padding: .45rem .75rem; border: 0; border-radius: .35rem; background: #2563eb; color: white; cursor: pointer; }
+.seat-assignment-controls button:disabled, .subscription-user-table button:disabled { opacity: .6; cursor: wait; }
 @media (max-width: 720px) { .subscription-page { padding: 1rem; } .subscription-page-heading, .subscription-layout { display: block; } .subscription-organization-list { margin: 1rem 0; } .subscription-summary, .subscription-form { grid-template-columns: 1fr; } }

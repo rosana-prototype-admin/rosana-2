@@ -49,6 +49,12 @@ class OrganizationSubscriptionWorkflowTests(APITestCase):
     def users_url(self):
         return reverse('organization-subscription-users', args=[self.organization.pk])
 
+    def seats_url(self):
+        return reverse('organization-subscription-seat-list', args=[self.organization.pk])
+
+    def seat_url(self, seat_id):
+        return reverse('organization-subscription-seat-detail', args=[self.organization.pk, seat_id])
+
     def test_financial_and_technical_admins_can_view_billing_summary(self):
         for user in (self.financial_admin, self.technical_admin):
             self.client.force_authenticate(user=user)
@@ -88,3 +94,32 @@ class OrganizationSubscriptionWorkflowTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         by_username = {entry['username']: entry for entry in response.data['users']}
         self.assertEqual(by_username['technical-admin']['seat_type'], 'technical_user')
+
+    def test_technical_admin_can_assign_and_release_seat(self):
+        self.client.force_authenticate(user=self.technical_admin)
+        response = self.client.post(self.seats_url(), {'user_id': self.commenter.pk}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        seat_id = response.data['id']
+        self.assertEqual(response.data['user']['id'], self.commenter.pk)
+
+        response = self.client.get(self.users_url())
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        commenter = next(entry for entry in response.data['users'] if entry['id'] == self.commenter.pk)
+        self.assertEqual(commenter['seat_id'], seat_id)
+
+        response = self.client.delete(self.seat_url(seat_id))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_financial_admin_cannot_assign_seats(self):
+        self.client.force_authenticate(user=self.financial_admin)
+        response = self.client.post(self.seats_url(), {'user_id': self.commenter.pk}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_seat_assignment_respects_subscription_limit(self):
+        self.subscription.seat_limit = 1
+        self.subscription.save(update_fields=['seat_limit'])
+        self.client.force_authenticate(user=self.technical_admin)
+        response = self.client.post(self.seats_url(), {'user_id': self.commenter.pk}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        response = self.client.post(self.seats_url(), {'user_id': self.financial_admin.pk}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

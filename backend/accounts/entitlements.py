@@ -236,3 +236,14 @@ def can_change_billing(user, group=None):
     if context.organization_role != OrganizationRole.FINANCIAL_ADMIN:
         return False
     return context.access_state != AccessState.ARCHIVE_DUE
+
+
+def can_manage_seats(user, group=None):
+    """Whether the user may assign or release technical seats."""
+    context = entitlement_context(user, group)
+    if user is not None and user.is_staff and user.is_active:
+        return True
+    return (
+        context.organization_role == OrganizationRole.TECHNICAL_ADMIN
+        and context.access_state == AccessState.ACTIVE
+    )

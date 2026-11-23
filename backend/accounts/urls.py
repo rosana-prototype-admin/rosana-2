@@ -30,7 +30,12 @@ from .admin_api import (
     AdminUserDetailView,
     AdminUserListView,
 )
-from .organization_api import OrganizationSubscriptionUsersView, OrganizationSubscriptionView
+from .organization_api import (
+    OrganizationSubscriptionSeatDetailView,
+    OrganizationSubscriptionSeatListCreateView,
+    OrganizationSubscriptionUsersView,
+    OrganizationSubscriptionView,
+)
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
@@ -52,6 +57,8 @@ urlpatterns = [
     path('me/entitlements/', MyEntitlementsView.as_view(), name='my-entitlements'),
     path('organizations/<int:group_pk>/subscription/', OrganizationSubscriptionView.as_view(), name='organization-subscription'),
     path('organizations/<int:group_pk>/subscription/users/', OrganizationSubscriptionUsersView.as_view(), name='organization-subscription-users'),
+    path('organizations/<int:group_pk>/subscription/seats/', OrganizationSubscriptionSeatListCreateView.as_view(), name='organization-subscription-seat-list'),
+    path('organizations/<int:group_pk>/subscription/seats/<int:seat_pk>/', OrganizationSubscriptionSeatDetailView.as_view(), name='organization-subscription-seat-detail'),
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
     path('sessions/revoke-all/', RevokeAllSessionsView.as_view(), name='revoke-all-sessions'),
     path('deactivate/', DeactivateAccountView.as_view(), name='deactivate-account'),

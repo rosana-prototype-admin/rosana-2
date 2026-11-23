@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getMyEntitlements } from '../api/users'
 import {
+  assignOrganizationSeat,
   getOrganizationSubscription,
   listOrganizationSubscriptionUsers,
+  releaseOrganizationSeat,
   updateOrganizationSubscription,
 } from '../api/subscriptions'
 import './SubscriptionPage.css'
@@ -34,6 +36,9 @@ export default function SubscriptionPage() {
   const [selectedId, setSelectedId] = useState('')
   const [summary, setSummary] = useState(null)
   const [users, setUsers] = useState([])
+  const [canManageSeats, setCanManageSeats] = useState(false)
+  const [selectedSeatUserId, setSelectedSeatUserId] = useState('')
+  const [isUpdatingSeat, setIsUpdatingSeat] = useState(false)
   const [form, setForm] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -88,6 +93,8 @@ export default function SubscriptionPage() {
       if (cancelled) return
       setSummary(subscriptionData)
       setUsers(usersData.users || [])
+      setCanManageSeats(Boolean(usersData.can_manage_seats))
+      setSelectedSeatUserId('')
       const subscription = subscriptionData.subscription
       setForm({
         plan_id: subscription?.plan_id ? String(subscription.plan_id) : '',
@@ -136,6 +143,46 @@ export default function SubscriptionPage() {
     }
   }
 
+  async function assignSeat() {
+    if (!selectedSeatUserId) return
+    setError('')
+    setMessage('')
+    setIsUpdatingSeat(true)
+    try {
+      const seat = await assignOrganizationSeat(selectedId, Number(selectedSeatUserId))
+      const userId = seat.user?.id || Number(selectedSeatUserId)
+      setUsers((current) => current.map((user) => (
+        user.id === userId
+          ? { ...user, seat_id: seat.id, seat_type: seat.seat_type }
+          : user
+      )))
+      setSelectedSeatUserId('')
+      setMessage('Technical seat assigned.')
+    } catch (requestError) {
+      setError(requestError.response?.data?.detail || 'Unable to assign the technical seat.')
+    } finally {
+      setIsUpdatingSeat(false)
+    }
+  }
+
+  async function releaseSeat(user) {
+    if (!user.seat_id) return
+    setError('')
+    setMessage('')
+    setIsUpdatingSeat(true)
+    try {
+      await releaseOrganizationSeat(selectedId, user.seat_id)
+      setUsers((current) => current.map((item) => (
+        item.id === user.id ? { ...item, seat_id: null, seat_type: null } : item
+      )))
+      setMessage('Technical seat released.')
+    } catch (requestError) {
+      setError(requestError.response?.data?.detail || 'Unable to release the technical seat.')
+    } finally {
+      setIsUpdatingSeat(false)
+    }
+  }
+
   if (isLoading) return <main className="subscription-page"><p>Loading subscriptions...</p></main>
 
   return (
@@ -167,6 +214,8 @@ export default function SubscriptionPage() {
                 onClick={() => {
                   setSummary(null)
                   setUsers([])
+                  setCanManageSeats(false)
+                  setSelectedSeatUserId('')
                   setError('')
                   setSelectedId(String(organization.group_id))
                 }}
@@ -227,11 +276,39 @@ export default function SubscriptionPage() {
             <section className="subscription-card">
               <h2>Organization users and seats</h2>
               <p>Technical seats are assigned separately from group membership.</p>
+              {canManageSeats && summary?.subscription && (
+                <div className="seat-assignment-controls">
+                  <label>
+                    Assign a technical seat
+                    <select value={selectedSeatUserId} onChange={(event) => setSelectedSeatUserId(event.target.value)} disabled={isUpdatingSeat}>
+                      <option value="">Select a user without a seat</option>
+                      {users.filter((user) => !user.seat_type).map((user) => (
+                        <option key={user.id} value={user.id}>{user.username} ({user.email})</option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={assignSeat}
+                    disabled={isUpdatingSeat || !selectedSeatUserId || users.filter((user) => user.seat_type).length >= summary.subscription.seat_limit}
+                  >
+                    {isUpdatingSeat ? 'Saving...' : 'Assign seat'}
+                  </button>
+                  {users.filter((user) => user.seat_type).length >= summary.subscription.seat_limit && <p className="subscription-readonly">All technical seats are assigned.</p>}
+                </div>
+              )}
               <div className="subscription-user-table-wrap">
                 <table className="subscription-user-table">
-                  <thead><tr><th>User</th><th>Email</th><th>Seat</th></tr></thead>
+                  <thead><tr><th>User</th><th>Email</th><th>Seat</th>{canManageSeats && <th>Actions</th>}</tr></thead>
                   <tbody>
-                    {users.map((user) => <tr key={user.id}><td>{user.username}</td><td>{user.email}</td><td>{user.seat_type ? label(user.seat_type) : 'No seat'}</td></tr>)}
+                    {users.map((user) => (
+                      <tr key={user.id}>
+                        <td>{user.username}</td>
+                        <td>{user.email}</td>
+                        <td>{user.seat_type ? label(user.seat_type) : 'No seat'}</td>
+                        {canManageSeats && <td>{user.seat_id && <button type="button" onClick={() => releaseSeat(user)} disabled={isUpdatingSeat}>Release</button>}</td>}
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
