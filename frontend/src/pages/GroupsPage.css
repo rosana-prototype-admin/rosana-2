@@ -233,3 +233,5 @@
     flex-direction: column;
   }
 }
+.group-subscription-summary { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; }
+.group-subscription-summary .group-section-heading button { margin-left: auto; }

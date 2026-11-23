@@ -14,10 +14,14 @@ from .serializers import OrganizationSubscriptionSerializer, UserSearchResultSer
 
 
 def organization_for_request(request, group_pk):
-    group = get_object_or_404(Group, pk=group_pk, parent__isnull=True)
-    if not can_view_billing(request.user, group):
+    group = get_object_or_404(Group, pk=group_pk)
+    organization = group
+    while organization.parent_id is not None:
+        organization = organization.parent
+    is_member = organization.effective_members().filter(pk=request.user.pk).exists()
+    if not can_view_billing(request.user, organization) and not is_member:
         raise PermissionDenied('You do not have permission to view this organization subscription.')
-    return group
+    return organization
 
 
 class OrganizationSubscriptionView(APIView):
@@ -33,6 +37,7 @@ class OrganizationSubscriptionView(APIView):
             'organization': {'id': group.id, 'name': group.name},
             'subscription': OrganizationSubscriptionSerializer(subscription).data if subscription else None,
             'plans': list(plans),
+            'can_view_billing': can_view_billing(request.user, group),
             'can_change_subscription': can_change_billing(request.user, group),
             'payment_processing': 'not_configured',
         })

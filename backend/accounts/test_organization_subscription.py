@@ -57,10 +57,13 @@ class OrganizationSubscriptionWorkflowTests(APITestCase):
             self.assertEqual(response.data['subscription']['plan_code'], self.plan.code)
             self.assertEqual(response.data['payment_processing'], 'not_configured')
 
-    def test_commenter_cannot_view_billing_summary(self):
+    def test_commenter_can_view_basic_subscription_summary(self):
         self.client.force_authenticate(user=self.commenter)
         response = self.client.get(self.url())
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['subscription']['plan_code'], self.plan.code)
+        self.assertFalse(response.data['can_view_billing'])
+        self.assertFalse(response.data['can_change_subscription'])
 
     def test_financial_admin_can_simulate_plan_change(self):
         self.client.force_authenticate(user=self.financial_admin)

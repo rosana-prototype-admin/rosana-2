@@ -10,6 +10,7 @@ import {
   updateGroupJcodes,
 } from '../api/groups'
 import { listJcodes } from '../api/jcodes'
+import { getOrganizationSubscription } from '../api/subscriptions'
 import ConfirmDialog from '../components/ConfirmDialog'
 import DataTable from '../components/DataTable'
 import JcodeSelectionTable from '../components/JcodeSelectionTable'
@@ -36,6 +37,7 @@ export default function GroupsPage() {
   const [showArchived, setShowArchived] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
   const [members, setMembers] = useState([])
+  const [groupSubscription, setGroupSubscription] = useState(null)
   const [isLoadingMembers, setIsLoadingMembers] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [isGroupFinderOpen, setIsGroupFinderOpen] = useState(false)
@@ -108,6 +110,27 @@ export default function GroupsPage() {
       cancelled = true
     }
   }, [selectedGroup, isSelectedGroupAdmin])
+
+  useEffect(() => {
+    let cancelled = false
+    if (!selectedGroup) {
+      return undefined
+    }
+    getOrganizationSubscription(selectedGroup.id).then((data) => {
+      if (!cancelled) setGroupSubscription({ ...data, requestedGroupId: selectedGroup.id })
+    }).catch(() => {
+      // Subscription visibility is supplementary to the group page. A user
+      // without organization membership should still be able to use the page.
+      if (!cancelled) setGroupSubscription({ requestedGroupId: selectedGroup.id, subscription: null })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedGroup])
+
+  const subscriptionForSelectedGroup = groupSubscription?.requestedGroupId === selectedGroup?.id
+    ? groupSubscription
+    : null
 
   const filteredGroups = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -385,6 +408,24 @@ export default function GroupsPage() {
             <div><dt>Admin</dt><dd>{displayUserName(selectedGroup.admin)}</dd></div>
             <div><dt>Your role</dt><dd>{selectedGroup.user_role === 'admin' ? 'Admin' : 'Member'}</dd></div>
           </dl>
+
+          <section className="group-subscription-summary" aria-labelledby="group-subscription-heading">
+            <div className="group-section-heading">
+              <div>
+                <h3 id="group-subscription-heading">Subscription</h3>
+                <p className="text-sm">This group uses its top-level organization&apos;s subscription.</p>
+              </div>
+              {subscriptionForSelectedGroup?.can_view_billing && <button type="button" onClick={() => navigate('/subscription')}>View subscription details</button>}
+            </div>
+            {!subscriptionForSelectedGroup ? <p className="text-sm">Loading subscription information...</p> : subscriptionForSelectedGroup.subscription ? (
+              <dl className="group-detail-meta">
+                <div><dt>Plan</dt><dd>{subscriptionForSelectedGroup.subscription.plan_name || subscriptionForSelectedGroup.subscription.plan_code}</dd></div>
+                <div><dt>Status</dt><dd>{subscriptionForSelectedGroup.subscription.status.replaceAll('_', ' ')}</dd></div>
+                <div><dt>Seats</dt><dd>{subscriptionForSelectedGroup.subscription.seat_limit}</dd></div>
+                <div><dt>Ends</dt><dd>{subscriptionForSelectedGroup.subscription.ends_at ? new Date(subscriptionForSelectedGroup.subscription.ends_at).toLocaleDateString() : 'No end date'}</dd></div>
+              </dl>
+            ) : <p className="text-sm">No subscription is currently assigned to this organization.</p>}
+          </section>
 
           {isSelectedGroupAdmin && (
             <div className="group-admin-sections">
