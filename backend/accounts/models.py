@@ -79,6 +79,12 @@ class SpeedUnit(models.TextChoices):
     MILES_PER_HOUR = 'mph', 'miles per hour'
 
 
+class DeactivationSource(models.TextChoices):
+    SELF = 'self', 'Self-deactivated'
+    ADMIN = 'admin', 'Administrator-deactivated'
+    SUSPENDED = 'suspended', 'Suspended'
+
+
 class SmallAreaUnit(models.TextChoices):
     SQUARE_METRES = 'm2', 'square metres'
     SQUARE_FEET = 'sq ft', 'square feet'
@@ -101,6 +107,14 @@ class User(AbstractUser):
     # self-service registrations explicitly set this to False until the user
     # follows the verification link sent to their email address.
     email_verified = models.BooleanField(default=True)
+    deactivation_source = models.CharField(
+        max_length=20,
+        choices=DeactivationSource.choices,
+        blank=True,
+        null=True,
+        help_text='Why this account became inactive, when known.',
+    )
+    deactivated_at = models.DateTimeField(blank=True, null=True)
     secondary_email = models.EmailField(blank=True)
     company = models.CharField(max_length=255, blank=True)
     subscription_type = models.CharField(

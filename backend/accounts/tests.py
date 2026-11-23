@@ -10,7 +10,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from geo.models import Jcode
 from groups.models import Group, Membership
 
-from .models import AuditEvent, Contract, Plan, SubscriptionSeat, User, UserSubscription
+from .models import AuditEvent, Contract, DeactivationSource, Plan, SubscriptionSeat, User, UserSubscription
 from .staff import validate_staff_account_change
 
 
@@ -475,6 +475,49 @@ class AdminUserManagementTests(APITestCase):
         self.assertFalse(self.user.email_verified)
         self.assertEqual(self.user.subscription_type, 'none')
         self.assertTrue(AuditEvent.objects.filter(action='user.updated', entity_id=str(self.user.pk)).exists())
+        self.assertEqual(self.user.deactivation_source, DeactivationSource.ADMIN)
+        self.assertIsNotNone(self.user.deactivated_at)
+
+    @override_settings(
+        EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+        FRONTEND_BASE_URL='https://app.example.com',
+    )
+    def test_password_reset_does_not_bypass_administrator_deactivation(self):
+        self.user.is_active = False
+        self.user.deactivation_source = DeactivationSource.ADMIN
+        self.user.save(update_fields=['is_active', 'deactivation_source'])
+
+        response = self.client.post(reverse('password-reset'), {'email': self.user.email})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        body = mail.outbox[0].body
+        uid = body.split('uid=')[1].split('&', 1)[0]
+        token = body.split('token=', 1)[1].split()[0]
+        response = self.client.post(
+            reverse('password-reset-confirm'),
+            {'uid': uid, 'token': token, 'new_password': 'NewStrongPass123!'},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_active)
+        self.assertIn('remains inactive', response.data['detail'])
+
+    def test_staff_can_reactivate_account_and_clear_deactivation_metadata(self):
+        self.user.is_active = False
+        self.user.deactivation_source = DeactivationSource.ADMIN
+        self.user.save(update_fields=['is_active', 'deactivation_source'])
+        self.client.force_authenticate(user=self.admin)
+
+        response = self.client.patch(
+            reverse('admin-user-detail', args=[self.user.pk]),
+            {'is_active': True, 'email_verified': True},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.is_active)
+        self.assertIsNone(self.user.deactivation_source)
+        self.assertIsNone(self.user.deactivated_at)
+        self.assertTrue(AuditEvent.objects.filter(action='user.reactivated', entity_id=str(self.user.pk)).exists())
 
     def test_staff_cannot_deactivate_themselves(self):
         self.client.force_authenticate(user=self.admin)

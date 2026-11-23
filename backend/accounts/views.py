@@ -1,6 +1,7 @@
 from django.db.models import Q
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_str
+from django.utils import timezone
 from django.utils.http import urlsafe_base64_decode
 from rest_framework import generics, permissions, serializers, status
 from rest_framework.response import Response
@@ -12,7 +13,7 @@ from groups.models import Group
 from accounts.audit import record_admin_event
 from .email import send_verification_email
 from .entitlements import can_use_feature, entitlement_context
-from .models import User
+from .models import DeactivationSource, User
 from .password_reset import send_password_reset_email
 from .serializers import (
     PasswordResetConfirmSerializer,
@@ -116,14 +117,24 @@ class PasswordResetConfirmView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         was_inactive = not user.is_active
+        can_reactivate = was_inactive and user.deactivation_source in {
+            DeactivationSource.SELF,
+            None,  # Legacy inactive accounts have no recorded source.
+        }
         user.set_password(serializer.validated_data['new_password'])
-        user.is_active = True
-        user.save(update_fields=['password', 'is_active'])
-        detail = (
-            'Your account has been reactivated and your password has been reset. You can now sign in.'
-            if was_inactive
-            else 'Your password has been reset. You can now sign in.'
-        )
+        update_fields = ['password']
+        if can_reactivate:
+            user.is_active = True
+            user.deactivation_source = None
+            user.deactivated_at = None
+            update_fields.extend(['is_active', 'deactivation_source', 'deactivated_at'])
+        user.save(update_fields=update_fields)
+        if can_reactivate:
+            detail = 'Your account has been reactivated and your password has been reset. You can now sign in.'
+        elif was_inactive:
+            detail = 'Your password has been reset. Your account remains inactive; contact an administrator to reactivate it.'
+        else:
+            detail = 'Your password has been reset. You can now sign in.'
         return Response({'detail': detail})
 
 
@@ -212,9 +223,20 @@ class DeactivateAccountView(APIView):
                 {'detail': 'Transfer administration of every active group before deactivating your account.'}
             )
         user.is_active = False
-        user.save(update_fields=['is_active'])
+        user.deactivation_source = DeactivationSource.SELF
+        user.deactivated_at = timezone.now()
+        user.save(update_fields=['is_active', 'deactivation_source', 'deactivated_at'])
         blacklist_all_refresh_tokens(user)
-        record_admin_event(request, 'user.deactivated', user, after={'is_active': False})
+        record_admin_event(
+            request,
+            'user.deactivated',
+            user,
+            after={
+                'is_active': False,
+                'deactivation_source': user.deactivation_source,
+                'deactivated_at': user.deactivated_at.isoformat(),
+            },
+        )
         return Response({'detail': 'Your account has been deactivated.'})
 
 

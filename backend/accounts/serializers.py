@@ -1,10 +1,11 @@
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 from rest_framework import serializers
 
 from groups.models import Group
 
-from .models import AuditEvent, Contract, Plan, SubscriptionSeat, User, UserSubscription
+from .models import AuditEvent, Contract, DeactivationSource, Plan, SubscriptionSeat, User, UserSubscription
 from .staff import validate_staff_account_change
 
 
@@ -97,11 +98,16 @@ class AdminUserSerializer(serializers.ModelSerializer):
             'company',
             'email_verified',
             'is_active',
+            'deactivation_source',
+            'deactivated_at',
             'is_staff',
             'date_joined',
             'last_login',
         ]
-        read_only_fields = ['id', 'username', 'email', 'is_staff', 'date_joined', 'last_login']
+        read_only_fields = [
+            'id', 'username', 'email', 'is_staff', 'date_joined', 'last_login',
+            'deactivation_source', 'deactivated_at',
+        ]
 
     def validate(self, attrs):
         instance = self.instance
@@ -120,6 +126,16 @@ class AdminUserSerializer(serializers.ModelSerializer):
         except ValidationError as exc:
             raise serializers.ValidationError({'is_active': exc.messages}) from exc
         return attrs
+
+    def update(self, instance, validated_data):
+        requested_active = validated_data.get('is_active')
+        if requested_active is False and instance.is_active:
+            validated_data['deactivation_source'] = DeactivationSource.ADMIN
+            validated_data['deactivated_at'] = timezone.now()
+        elif requested_active is True and not instance.is_active:
+            validated_data['deactivation_source'] = None
+            validated_data['deactivated_at'] = None
+        return super().update(instance, validated_data)
 
 
 class AdminSubscriptionSerializer(serializers.ModelSerializer):

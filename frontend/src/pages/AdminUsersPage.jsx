@@ -17,6 +17,15 @@ function statusLabel(user) {
   return 'Active'
 }
 
+function deactivationLabel(user) {
+  if (user.is_active || !user.deactivation_source) return ''
+  return user.deactivation_source === 'self'
+    ? 'Self-deactivated'
+    : user.deactivation_source === 'suspended'
+      ? 'Suspended'
+      : 'Administrator-deactivated'
+}
+
 function displayName(user) {
   return `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username
 }
@@ -121,7 +130,7 @@ export default function AdminUsersPage() {
     { key: 'username', header: 'Username' },
     { key: 'email', header: 'Email' },
     { key: 'name', header: 'Name', render: displayName, sortable: false },
-    { key: 'status', header: 'Status', render: statusLabel, sortValue: statusLabel },
+    { key: 'status', header: 'Status', render: (user) => deactivationLabel(user) || statusLabel(user), sortValue: (user) => deactivationLabel(user) || statusLabel(user) },
   ]
 
   return (
@@ -176,6 +185,8 @@ export default function AdminUsersPage() {
             <div><dt>Username</dt><dd>{selectedUser.username}</dd></div>
             <div><dt>Email</dt><dd>{selectedUser.email}</dd></div>
             <div><dt>Platform admin</dt><dd>{selectedUser.is_staff ? 'Yes' : 'No'}</dd></div>
+            <div><dt>Deactivation reason</dt><dd>{deactivationLabel(selectedUser) || '—'}</dd></div>
+            {selectedUser.deactivated_at && <div><dt>Deactivated at</dt><dd>{new Date(selectedUser.deactivated_at).toLocaleString()}</dd></div>}
           </dl>
           <div className="admin-user-fields">
             <label>

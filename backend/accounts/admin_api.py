@@ -57,11 +57,18 @@ class AdminUserDetailView(generics.RetrieveUpdateAPIView):
 
     def perform_update(self, serializer):
         user = self.get_object()
-        before = {field: getattr(user, field) for field in ('is_active', 'email_verified', 'first_name', 'last_name', 'company', 'secondary_email')}
+        fields = ('is_active', 'deactivation_source', 'deactivated_at', 'email_verified', 'first_name', 'last_name', 'company', 'secondary_email')
+        before = {field: getattr(user, field) for field in fields}
+        if before['deactivated_at'] is not None:
+            before['deactivated_at'] = before['deactivated_at'].isoformat()
         updated = serializer.save()
-        after = {field: getattr(updated, field) for field in before}
+        after = {field: getattr(updated, field) for field in fields}
+        if after['deactivated_at'] is not None:
+            after['deactivated_at'] = after['deactivated_at'].isoformat()
         if before != after:
             record_admin_event(self.request, 'user.updated', updated, before, after)
+            if before['is_active'] is False and after['is_active'] is True:
+                record_admin_event(self.request, 'user.reactivated', updated, before, after)
 
 
 class AdminResendVerificationView(APIView):
