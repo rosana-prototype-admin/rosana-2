@@ -90,7 +90,7 @@ export default function RegisterPage() {
   return (
     <main className="auth-page">
       <form className="auth-card auth-card-wide" onSubmit={handleSubmit} noValidate>
-        <h1>Rosana</h1>
+        <h1>Rosåna</h1>
         <p className="auth-subtitle">Create an account</p>
 
         {generalError && (
@@ -171,6 +171,8 @@ export default function RegisterPage() {
 
         <p className="auth-switch">
           Already have an account? <Link to="/login">Sign in</Link>
+          {' · '}
+          <Link to="/forgot-password">Forgot password or reactivate?</Link>
         </p>
       </form>
     </main>

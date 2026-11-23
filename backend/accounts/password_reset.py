@@ -19,10 +19,11 @@ def password_reset_url(user):
 def send_password_reset_email(user):
     try:
         send_mail(
-            'Reset your Rosana password',
+            'Reset or reactivate your Rosana account',
             (
                 f'Hello {user.first_name or user.username},\n\n'
-                'We received a request to reset your Rosana password. Use this link '
+                'We received a request to reset your Rosana password. If your account '
+                'was deactivated, completing this process will also reactivate it. Use this link '
                 f'to choose a new password:\n\n{password_reset_url(user)}\n\n'
                 'This link expires after a limited time. If you did not request a '
                 'password reset, you can ignore this email.'

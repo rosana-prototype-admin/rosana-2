@@ -9,6 +9,7 @@ from .staff import validate_staff_account_change
 
 
 class RegisterSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(validators=[])
     password = serializers.CharField(write_only=True, validators=[validate_password])
 
     class Meta:
@@ -24,6 +25,16 @@ class RegisterSerializer(serializers.ModelSerializer):
             'secondary_email',
         ]
         read_only_fields = ['id']
+
+    def validate_email(self, value):
+        existing = User.objects.filter(email__iexact=value).first()
+        if existing and not existing.is_active:
+            raise serializers.ValidationError(
+                'An inactive account already uses this email. Use Forgot password to reactivate it.'
+            )
+        if existing:
+            raise serializers.ValidationError('An account already uses this email. Use Forgot password to recover it.')
+        return value
 
     def create(self, validated_data):
         password = validated_data.pop('password')

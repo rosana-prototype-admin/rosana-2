@@ -38,6 +38,24 @@ class RegistrationAndAuthTests(APITestCase):
         self.assertEqual(mail.outbox[0].to, ['alice@example.com'])
         self.assertIn('https://app.example.com/verify-email?', mail.outbox[0].body)
 
+    def test_registration_explains_how_to_reactivate_inactive_account(self):
+        User.objects.create_user(
+            username='inactive-user',
+            email='inactive@example.com',
+            password='OldStrongPass123!',
+            is_active=False,
+        )
+        response = self.client.post(
+            reverse('register'),
+            {
+                'username': 'replacement',
+                'email': 'inactive@example.com',
+                'password': 'StrongPass123!',
+            },
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Forgot password', response.data['email'][0])
+
     @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
     def test_unverified_user_cannot_sign_in_until_email_is_verified(self):
         response = self.client.post(
@@ -140,6 +158,33 @@ class RegistrationAndAuthTests(APITestCase):
             {'uid': uid, 'token': token, 'new_password': 'AnotherStrongPass123!'},
         )
         self.assertEqual(replay.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @override_settings(
+        EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+        FRONTEND_BASE_URL='https://app.example.com',
+    )
+    def test_password_reset_reactivates_inactive_account(self):
+        user = User.objects.create_user(
+            username='inactive-reset-user',
+            email='inactive-reset@example.com',
+            password='OldStrongPass123!',
+            is_active=False,
+        )
+        response = self.client.post(reverse('password-reset'), {'email': user.email})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 1)
+
+        body = mail.outbox[0].body
+        uid = body.split('uid=')[1].split('&', 1)[0]
+        token = body.split('token=', 1)[1].split()[0]
+        response = self.client.post(
+            reverse('password-reset-confirm'),
+            {'uid': uid, 'token': token, 'new_password': 'NewStrongPass123!'},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        user.refresh_from_db()
+        self.assertTrue(user.is_active)
+        self.assertIn('reactivated', response.data['detail'])
 
     def test_obtain_token_and_fetch_me(self):
         User.objects.create_user(username='bob', email='bob@example.com', password='StrongPass123!')

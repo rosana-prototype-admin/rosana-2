@@ -74,7 +74,6 @@ class PasswordResetRequestView(APIView):
         email = serializer.validated_data['email']
         user = User.objects.filter(
             email__iexact=email,
-            is_active=True,
             email_verified=True,
         ).first()
         if user:
@@ -116,9 +115,16 @@ class PasswordResetConfirmView(APIView):
         except serializers.ValidationError:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        was_inactive = not user.is_active
         user.set_password(serializer.validated_data['new_password'])
-        user.save(update_fields=['password'])
-        return Response({'detail': 'Your password has been reset. You can now sign in.'})
+        user.is_active = True
+        user.save(update_fields=['password', 'is_active'])
+        detail = (
+            'Your account has been reactivated and your password has been reset. You can now sign in.'
+            if was_inactive
+            else 'Your password has been reset. You can now sign in.'
+        )
+        return Response({'detail': detail})
 
 
 class MeView(generics.RetrieveUpdateAPIView):

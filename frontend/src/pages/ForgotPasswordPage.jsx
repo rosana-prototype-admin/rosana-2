@@ -28,10 +28,10 @@ export default function ForgotPasswordPage() {
     <main className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit} noValidate>
         <h1>Rosana</h1>
-        <p className="auth-subtitle">Reset your password</p>
+        <p className="auth-subtitle">Reset your password or reactivate your account</p>
         {submitted ? (
           <>
-            <p>If an account exists for that email, we sent a password reset link.</p>
+            <p>If an account exists for that email, we sent a reset link. Completing it will also reactivate a deactivated account.</p>
             <p className="auth-switch"><Link to="/login">Return to sign in</Link></p>
           </>
         ) : (
@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
               />
             </label>
             <button type="submit" className="auth-submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Sending...' : 'Send reset link'}
+              {isSubmitting ? 'Sending...' : 'Send reset or reactivation link'}
             </button>
             <p className="auth-switch"><Link to="/login">Return to sign in</Link></p>
           </>
