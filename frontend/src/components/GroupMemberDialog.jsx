@@ -74,7 +74,7 @@ export default function GroupMemberDialog({
   return (
     <div className="dialog-overlay" onClick={onCancel}>
       <form
-        className="dialog-card"
+        className="dialog-card group-member-dialog"
         onClick={(event) => event.stopPropagation()}
         onSubmit={handleSubmit}
         noValidate

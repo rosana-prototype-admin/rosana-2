@@ -27,6 +27,13 @@
   margin: 0;
 }
 
+.group-member-dialog {
+  width: min(760px, 100%);
+  max-width: 760px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
 .dialog-card p {
   color: var(--text);
 }
@@ -74,6 +81,13 @@
   gap: 0.5rem;
   width: 100%;
   margin-top: 0.4rem;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.permission-option input {
+  flex: 0 0 auto;
+  margin-top: 0.15rem;
 }
 
 .permission-group {
