@@ -26,7 +26,10 @@ function describe(notification) {
       ...organizationalRoles,
     ].filter(Boolean)
     const roleSuffix = assignedRoles.length > 0 ? ` as ${assignedRoles.join(' / ')}` : ''
-    return `You've been invited to join "${groupName}"${roleSuffix}.`
+    const seatNote = notification.rosana_role === 'technical_user'
+      ? ' A Technical User seat may be required before analysis features are available.'
+      : ''
+    return `You've been invited to join "${groupName}"${roleSuffix}.${seatNote}`
   }
   return `${userLabel(notification.user)} requested to join "${groupName}".`
 }

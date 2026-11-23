@@ -15,6 +15,8 @@ import {
 import DataTable from '../components/DataTable'
 import ConfirmDialog from '../components/ConfirmDialog'
 import GroupMemberDialog from '../components/GroupMemberDialog'
+import AccessStatusCard from '../components/AccessStatusCard'
+import { getMyEntitlements } from '../api/users'
 import { useAuth } from '../hooks/useAuth'
 import { formatDate } from '../utils/formatDate'
 import '../styles/editorForm.css'
@@ -77,6 +79,7 @@ export default function GroupEditorPage() {
   const [selectedSubgroupId, setSelectedSubgroupId] = useState(null)
   const [isCreatingSubgroup, setIsCreatingSubgroup] = useState(false)
   const [subgroupError, setSubgroupError] = useState('')
+  const [entitlement, setEntitlement] = useState(null)
 
   // The /groups/new route has no :id parameter, so useParams() returns
   // undefined there rather than the string "new".
@@ -164,6 +167,17 @@ export default function GroupEditorPage() {
       cancelled = true
     }
   }, [isNew, loadMembers])
+
+  useEffect(() => {
+    if (isNew || !id) return undefined
+    let cancelled = false
+    getMyEntitlements().then((records) => {
+      if (!cancelled) setEntitlement(records.find((record) => String(record.group_id) === String(id)) || null)
+    }).catch(() => {
+      if (!cancelled) setEntitlement(null)
+    })
+    return () => { cancelled = true }
+  }, [id, isNew])
 
   const excludedIds = useMemo(() => collectExcludedIds(allGroups, group?.id), [allGroups, group])
   const parentOptions = useMemo(
@@ -445,6 +459,8 @@ export default function GroupEditorPage() {
           </button>
         )}
       </form>
+
+      {!isNew && entitlement && <AccessStatusCard entitlement={entitlement} groupId={id} compact />}
 
       {!isNew && <section className="editor-section">
         <div className="editor-section-header">

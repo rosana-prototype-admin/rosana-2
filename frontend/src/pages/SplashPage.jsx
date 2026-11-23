@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { listMyGroups } from '../api/groups'
 import { getMyEntitlements } from '../api/users'
 import { useAuth } from '../hooks/useAuth'
+import AccessStatusCard from '../components/AccessStatusCard'
 import './SplashPage.css'
 
 const SUBSCRIPTION_LABELS = {
@@ -115,6 +116,10 @@ export default function SplashPage() {
             <button type="button" onClick={() => navigate('/settings')}>View Settings</button>
           </section>
         )}
+
+        {!isLoadingEntitlements && entitlements.map((entitlement) => (
+          <AccessStatusCard key={entitlement.group_id} entitlement={entitlement} />
+        ))}
 
         <dl className="splash-details">
           <div>

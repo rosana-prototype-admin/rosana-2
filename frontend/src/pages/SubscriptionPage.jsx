@@ -9,6 +9,7 @@ import {
   updateOrganizationSubscription,
 } from '../api/subscriptions'
 import './SubscriptionPage.css'
+import AccessStatusCard from '../components/AccessStatusCard'
 
 const STATUS_OPTIONS = [
   ['trialing', 'Trialing'],
@@ -239,6 +240,7 @@ export default function SubscriptionPage() {
                   <div><span>Seats</span><strong>{summary.subscription.seat_limit}</strong></div>
                 </div>
               )}
+              {selectedOrganization && <AccessStatusCard entitlement={selectedOrganization} groupId={selectedId} compact />}
 
               {form && (
                 <form onSubmit={saveSubscription} className="subscription-form">
@@ -299,13 +301,15 @@ export default function SubscriptionPage() {
               )}
               <div className="subscription-user-table-wrap">
                 <table className="subscription-user-table">
-                  <thead><tr><th>User</th><th>Email</th><th>Seat</th>{canManageSeats && <th>Actions</th>}</tr></thead>
+                  <thead><tr><th>User</th><th>Email</th><th>Rosana Role</th><th>Seat</th><th>Access</th>{canManageSeats && <th>Actions</th>}</tr></thead>
                   <tbody>
                     {users.map((user) => (
                       <tr key={user.id}>
                         <td>{user.username}</td>
                         <td>{user.email}</td>
+                        <td>{label(user.rosana_role || 'member')}</td>
                         <td>{user.seat_type ? label(user.seat_type) : 'No seat'}</td>
+                        <td>{user.rosana_role === 'technical_user' && !user.seat_type ? 'Seat required for analysis' : user.rosana_role === 'commenter' ? 'Comment access' : 'Full technical access'}</td>
                         {canManageSeats && <td>{user.seat_id && <button type="button" onClick={() => releaseSeat(user)} disabled={isUpdatingSeat}>Release</button>}</td>}
                       </tr>
                     ))}

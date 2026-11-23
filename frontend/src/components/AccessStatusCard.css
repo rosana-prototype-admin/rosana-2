@@ -1,0 +1,16 @@
+.access-status-card { padding: 1rem 1.15rem; border: 1px solid #f59e0b; border-radius: .65rem; background: #fffbeb; color: #78350f; }
+.access-status-card.access-status-success { border-color: #86efac; background: #f0fdf4; color: #166534; }
+.access-status-heading { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; }
+.access-status-eyebrow { margin: 0 0 .15rem; font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; opacity: .8; }
+.access-status-card h2 { margin: 0; font-size: 1.05rem; }
+.access-status-badge { white-space: nowrap; padding: .3rem .55rem; border-radius: 999px; background: rgba(245, 158, 11, .15); font-size: .8rem; }
+.access-status-success .access-status-badge { background: rgba(34, 197, 94, .15); }
+.access-status-details { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; margin: 1rem 0 .75rem; }
+.access-status-details dt { font-size: .75rem; opacity: .75; }
+.access-status-details dd { margin: .2rem 0 0; font-weight: 600; }
+.access-status-message { margin: 0; font-size: .9rem; }
+.access-status-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: .9rem; }
+.access-status-actions a { color: inherit; font-weight: 700; }
+.access-status-compact { padding: .8rem 1rem; }
+.access-status-compact .access-status-details { margin-bottom: .5rem; }
+@media (max-width: 700px) { .access-status-heading { flex-direction: column; } .access-status-details { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

@@ -5,7 +5,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from groups.models import Group
+from groups.models import Group, Membership, RosanaRole
 
 from .audit import record_admin_event
 from .entitlements import can_change_billing, can_manage_seats, can_view_billing
@@ -96,6 +96,8 @@ class OrganizationSubscriptionUsersView(APIView):
             seat = seats.get(user.pk)
             entry['seat_id'] = seat.pk if seat else None
             entry['seat_type'] = seat.seat_type if seat else None
+            membership = Membership.objects.filter(group=group, user=user).first()
+            entry['rosana_role'] = membership.rosana_role if membership else RosanaRole.TECHNICAL_ADMIN
             users.append(entry)
         return Response({
             'organization': {'id': group.id, 'name': group.name},
