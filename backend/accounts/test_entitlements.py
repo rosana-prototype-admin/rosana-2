@@ -90,6 +90,16 @@ class EntitlementEngineTests(TestCase):
         self.assertEqual(subscription_access_state(self.subscription), AccessState.EXPIRED_RESTRICTED)
         self.assertFalse(can_view_existing(self.technical_user, self.organization))
 
+    def test_archived_organization_has_no_entitlement_context(self):
+        self.organization.archived_at = timezone.now()
+        self.organization.save(update_fields=['archived_at'])
+
+        context = entitlement_context(self.technical_user, self.organization)
+
+        self.assertIsNone(context.subscription)
+        self.assertEqual(context.access_state, AccessState.UNLICENSED)
+        self.assertFalse(can_use_feature(self.technical_user, 'analyze', self.organization))
+
 
 class EntitlementEndpointTests(APITestCase):
     def test_entitlements_endpoint_requires_authentication(self):

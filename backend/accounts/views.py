@@ -161,6 +161,7 @@ class MyEntitlementsView(APIView):
     def get(self, request):
         groups = Group.objects.filter(
             Q(admin=request.user) | Q(memberships__user=request.user),
+            archived_at__isnull=True,
         ).select_related('parent').distinct()
         records = []
         for group in groups:

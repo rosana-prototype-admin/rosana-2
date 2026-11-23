@@ -36,7 +36,7 @@ def top_level_group(group):
 
 def subscription_for_group(group):
     organization = top_level_group(group)
-    if organization is None:
+    if organization is None or organization.archived_at is not None:
         return None
     return organization.subscriptions.select_related('plan').order_by('-starts_at', '-created_at').first()
 
@@ -101,6 +101,8 @@ def entitlement_context(user, group=None):
         return EntitlementContext(user, group, None, None, False, AccessState.UNLICENSED)
 
     if group is not None:
+        if group.archived_at is not None or top_level_group(group).archived_at is not None:
+            return EntitlementContext(user, group, None, None, False, AccessState.UNLICENSED)
         organization = top_level_group(group)
         subscription = subscription_for_group(group)
         membership, role = _organization_membership(user, group)
@@ -130,8 +132,8 @@ def user_entitlement_contexts(user):
     """Return the user's distinct organization contexts with subscriptions."""
     if user is None or not user.is_authenticated or not user.is_active:
         return []
-    groups = list(Membership.objects.filter(user=user).values_list('group_id', flat=True))
-    groups += list(Group.objects.filter(admin=user).values_list('id', flat=True))
+    groups = list(Membership.objects.filter(user=user, group__archived_at__isnull=True).values_list('group_id', flat=True))
+    groups += list(Group.objects.filter(admin=user, archived_at__isnull=True).values_list('id', flat=True))
     contexts = []
     seen_organizations = set()
     for group_id in groups:
