@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from groups.models import Group, Membership, OrganizationRole
 
-from .models import PlanFeature, SubscriptionSeatType, UserSubscription
+from .models import PlanFeature, SubscriptionSeatType, SubscriptionStatus, UserSubscription
 
 
 class AccessState:
@@ -54,6 +54,28 @@ def subscription_access_state(subscription, now=None):
     if subscription is None:
         return AccessState.UNLICENSED
     now = now or timezone.now()
+
+    # These statuses represent an interruption before the contractual end
+    # date. They are intentionally testable without a payment provider.
+    if subscription.status == SubscriptionStatus.PAST_DUE:
+        return AccessState.EXPIRED_GRACE
+    if subscription.status == SubscriptionStatus.PAUSED:
+        return AccessState.EXPIRED_RESTRICTED
+
+    # A canceled or explicitly expired record enters the same dated lifecycle
+    # as an ended subscription. If no end date exists, treat the status change
+    # as occurring now, which starts the grace period.
+    if subscription.status in {SubscriptionStatus.CANCELED, SubscriptionStatus.EXPIRED}:
+        end = subscription.ends_at or now
+        months = _full_months_since(end, now)
+        if months < 3:
+            return AccessState.EXPIRED_GRACE
+        if months < 6:
+            return AccessState.EXPIRED_RESTRICTED
+        if months < 12:
+            return AccessState.EXPIRED_LOCKED
+        return AccessState.ARCHIVE_DUE
+
     if subscription.ends_at is None or subscription.ends_at > now:
         return AccessState.ACTIVE
 

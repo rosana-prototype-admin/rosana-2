@@ -10,6 +10,7 @@ from groups.models import Group, Membership, OrganizationRole
 from .entitlements import (
     AccessState,
     can_use_feature,
+    can_view_existing,
     entitlement_context,
     subscription_access_state,
 )
@@ -75,6 +76,19 @@ class EntitlementEngineTests(TestCase):
         self.subscription.save(update_fields=['ends_at'])
         self.assertEqual(subscription_access_state(self.subscription), AccessState.EXPIRED_RESTRICTED)
         self.assertFalse(can_use_feature(self.technical_user, 'analyze', self.organization))
+
+    def test_past_due_subscription_is_read_only_during_grace_period(self):
+        self.subscription.status = 'past_due'
+        self.subscription.save(update_fields=['status'])
+        self.assertEqual(subscription_access_state(self.subscription), AccessState.EXPIRED_GRACE)
+        self.assertTrue(can_view_existing(self.technical_user, self.organization))
+        self.assertFalse(can_use_feature(self.technical_user, 'analyze', self.organization))
+
+    def test_paused_subscription_is_restricted(self):
+        self.subscription.status = 'paused'
+        self.subscription.save(update_fields=['status'])
+        self.assertEqual(subscription_access_state(self.subscription), AccessState.EXPIRED_RESTRICTED)
+        self.assertFalse(can_view_existing(self.technical_user, self.organization))
 
 
 class EntitlementEndpointTests(APITestCase):
