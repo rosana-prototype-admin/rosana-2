@@ -16,6 +16,7 @@ import '../styles/formFeedback.css'
 import '../styles/actionToolbar.css'
 import './OpportunityEditorPage.css'
 import { apiErrorMessage } from '../utils/apiError'
+import { entitlementDenialMessage } from '../utils/entitlementMessages'
 
 const OPPORTUNITY_STATUS_OPTIONS = [
   { value: 'drafting', label: 'Drafting' },
@@ -63,6 +64,7 @@ export default function OpportunityEditorPage() {
   const [isCreatingProject, setIsCreatingProject] = useState(false)
   const [isDeletingProject, setIsDeletingProject] = useState(false)
   const [isProjectDeleteDialogOpen, setIsProjectDeleteDialogOpen] = useState(false)
+  const [projectAccessMessage, setProjectAccessMessage] = useState('')
 
   // Set right after a successful creation, to the newly created id -- lets
   // the load effect below (which still fires because `id` just changed from
@@ -73,6 +75,27 @@ export default function OpportunityEditorPage() {
   const canWrite =
     isNew || (opportunity && user && (opportunity.manager === user.id || opportunity.delegates?.includes(user.id)))
   const canSubmitOpportunity = canWrite && !leadAgencyAccessMessage
+
+  useEffect(() => {
+    if (isNew || !leadAgency || !canWrite) {
+      return undefined
+    }
+    let cancelled = false
+    getMyEntitlements().then((records) => {
+      if (cancelled) return
+      const entitlement = records.find((record) => String(record.group_id) === String(leadAgency.id))
+      if (entitlement && entitlement.features?.create_modify_project === false) {
+        setProjectAccessMessage(entitlementDenialMessage(entitlement, 'Projects'))
+      } else if (!entitlement) {
+        setProjectAccessMessage('This organization does not have an active subscription for Projects.')
+      } else {
+        setProjectAccessMessage('')
+      }
+    }).catch(() => {
+      if (!cancelled) setProjectAccessMessage('')
+    })
+    return () => { cancelled = true }
+  }, [isNew, leadAgency, canWrite])
 
   useEffect(() => {
     if (!isNew || !leadAgency) {
@@ -651,9 +674,15 @@ export default function OpportunityEditorPage() {
               </p>
             )}
 
+            {projectAccessMessage && (
+              <p className="form-error" role="alert">
+                {projectAccessMessage}
+              </p>
+            )}
+
             <div className="action-toolbar">
               {canWrite && (
-                <button type="button" onClick={handleNewProject} disabled={isCreatingProject}>
+                <button type="button" onClick={handleNewProject} disabled={isCreatingProject || Boolean(projectAccessMessage)}>
                   {isCreatingProject ? 'Creating…' : 'New Project'}
                 </button>
               )}

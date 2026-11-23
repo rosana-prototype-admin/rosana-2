@@ -1,7 +1,8 @@
 from rest_framework import status
 from rest_framework.test import APITestCase
+from django.utils import timezone
 
-from accounts.models import User
+from accounts.models import Plan, PlanFeature, User, UserSubscription
 from geo.models import Jcode
 from focusareas.models import FocusArea, InterventionType
 from groups.models import Group, Membership
@@ -403,13 +404,40 @@ class HierarchyTestCase(OpportunityTestCase):
         self.intervention_type = InterventionType.objects.first()
         self.strategy = Strategy.objects.create(site=self.site, intervention_type=self.intervention_type)
 
-    def test_manager_can_create_project(self):
+    def create_project_subscription(self):
+        plan = Plan.objects.create(code='project-test', name='Project test plan')
+        PlanFeature.objects.create(plan=plan, feature_code='analyze', enabled=True)
+        PlanFeature.objects.create(plan=plan, feature_code='view_existing', enabled=True)
+        return UserSubscription.objects.create(
+            group=self.lead_agency,
+            plan=plan,
+            plan_code='basic',
+            starts_at=timezone.now(),
+        )
+
+    def test_project_creation_without_subscription_is_rejected_transparently(self):
+        self.client.force_authenticate(user=self.manager)
+        response = self.client.post(
+            f'/api/opportunities/{self.opportunity.pk}/projects/', {'title': 'New Project', 'comment': ''}
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('active subscription', response.data['detail'])
+
+    def test_manager_can_create_project_with_analyze_entitlement(self):
+        self.create_project_subscription()
         self.client.force_authenticate(user=self.manager)
         response = self.client.post(
             f'/api/opportunities/{self.opportunity.pk}/projects/', {'title': 'New Project', 'comment': ''}
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['opportunity'], self.opportunity.pk)
+
+    def test_project_modification_without_subscription_is_rejected_transparently(self):
+        project = Project.objects.create(opportunity=self.opportunity, title='Existing Project')
+        self.client.force_authenticate(user=self.manager)
+        response = self.client.patch(f'/api/projects/{project.pk}/', {'title': 'Renamed'})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('active subscription', response.data['detail'])
 
     def test_stakeholder_cannot_create_project(self):
         self.client.force_authenticate(user=self.stakeholder)

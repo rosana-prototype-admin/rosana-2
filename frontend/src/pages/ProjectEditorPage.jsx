@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getProject, updateProject } from '../api/projects'
 import { getOpportunity } from '../api/opportunities'
+import { getMyEntitlements } from '../api/users'
 import { createSite, deleteSite, listSites } from '../api/sites'
 import DataTable from '../components/DataTable'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -12,6 +13,7 @@ import '../styles/editorForm.css'
 import '../styles/formFeedback.css'
 import '../styles/actionToolbar.css'
 import { apiErrorMessage } from '../utils/apiError'
+import { entitlementDenialMessage } from '../utils/entitlementMessages'
 
 export default function ProjectEditorPage() {
   const { id } = useParams()
@@ -30,6 +32,7 @@ export default function ProjectEditorPage() {
   const [saveError, setSaveError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [savedAt, setSavedAt] = useState(null)
+  const [projectAccessMessage, setProjectAccessMessage] = useState('')
 
   const [sites, setSites] = useState([])
   const [isLoadingSites, setIsLoadingSites] = useState(false)
@@ -102,6 +105,27 @@ export default function ProjectEditorPage() {
   const canWrite =
     opportunity && user && (opportunity.manager === user.id || opportunity.delegates?.includes(user.id))
 
+  useEffect(() => {
+    if (!canWrite || !opportunity) {
+      return undefined
+    }
+    let cancelled = false
+    getMyEntitlements().then((records) => {
+      if (cancelled) return
+      const entitlement = records.find((record) => String(record.group_id) === String(opportunity.lead_agency))
+      if (entitlement && entitlement.features?.create_modify_project === false) {
+        setProjectAccessMessage(entitlementDenialMessage(entitlement, 'Projects'))
+      } else if (!entitlement) {
+        setProjectAccessMessage('This organization does not have an active subscription for Projects.')
+      } else {
+        setProjectAccessMessage('')
+      }
+    }).catch(() => {
+      if (!cancelled) setProjectAccessMessage('')
+    })
+    return () => { cancelled = true }
+  }, [canWrite, opportunity])
+
   const isDirty =
     baseline && (title !== baseline.title || comment !== baseline.comment || Number(statusValue) !== Number(baseline.status))
 
@@ -115,6 +139,11 @@ export default function ProjectEditorPage() {
   async function handleSave(event) {
     event.preventDefault()
     setSaveError('')
+
+    if (projectAccessMessage) {
+      setSaveError(projectAccessMessage)
+      return
+    }
 
     if (!title.trim()) {
       setSaveError('Title is required.')
@@ -251,6 +280,11 @@ export default function ProjectEditorPage() {
             {saveError}
           </p>
         )}
+        {projectAccessMessage && !saveError && (
+          <p className="form-error" role="alert">
+            {projectAccessMessage}
+          </p>
+        )}
         {savedAt && !isDirty && !saveError && <p className="form-success text-sm">Saved.</p>}
 
         <label className="editor-field">
@@ -297,7 +331,7 @@ export default function ProjectEditorPage() {
           </div>
         </dl>
 
-        {canWrite && (
+        {canWrite && !projectAccessMessage && (
           <button type="submit" className="editor-save" disabled={!isDirty || isSaving}>
             {isSaving ? 'Saving…' : 'Save'}
           </button>

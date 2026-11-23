@@ -3,7 +3,13 @@ from django.db.models import Q
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
-from accounts.entitlements import can_use_feature, can_view_existing, entitlement_context, subscription_for_group
+from accounts.entitlements import (
+    can_use_feature,
+    can_view_existing,
+    entitlement_context,
+    feature_denial_message,
+    subscription_for_group,
+)
 from groups.permissions import has_group_permission, has_opportunity_permission, user_has_group_membership
 
 
@@ -54,6 +60,17 @@ def can_write_with_permission(user, opportunity, permission_code):
     return has_opportunity_permission(user, opportunity, permission_code)
 
 
+def enforce_project_write_access(user, opportunity):
+    """Raise a transparent error when Project analysis/editing is unavailable."""
+    lead_agency = opportunity.lead_agency
+    if not can_use_feature(user, 'analyze', lead_agency):
+        raise PermissionDenied(feature_denial_message(user, 'analyze', lead_agency))
+    if not can_write(user, opportunity):
+        raise PermissionDenied('You do not have write access to this opportunity.')
+    if not has_opportunity_permission(user, opportunity, 'create_modify_project'):
+        raise PermissionDenied('You do not have permission to create or modify Projects for this Group.')
+
+
 def entitled_opportunity_queryset(queryset, user):
     """Filter legacy visibility through organization entitlements."""
     allowed_ids = [opportunity.pk for opportunity in queryset if can_read(user, opportunity)]
@@ -98,6 +115,11 @@ class OpportunityAccessPermission(BasePermission):
         if request.method in SAFE_METHODS:
             return can_read(request.user, opportunity)
         permission_code = permission_for_view(view)
+        if (
+            view.__class__.__name__ == 'ProjectViewSet'
+            and request.method in {'PUT', 'PATCH'}
+        ):
+            enforce_project_write_access(request.user, opportunity)
         if permission_code and not has_opportunity_permission(request.user, opportunity, permission_code):
             return False
         return can_write(request.user, opportunity)
@@ -118,8 +140,7 @@ class ProjectAncestorScopedMixin:
 
     def perform_create(self, serializer):
         opportunity = self.get_ancestor()
-        if not can_write_with_permission(self.request.user, opportunity, 'create_modify_project'):
-            raise PermissionDenied('You do not have write access to this opportunity.')
+        enforce_project_write_access(self.request.user, opportunity)
         serializer.save(opportunity=opportunity)
 
 
