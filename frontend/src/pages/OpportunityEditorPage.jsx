@@ -83,7 +83,17 @@ export default function OpportunityEditorPage() {
       if (cancelled) return
       const entitlement = records.find((record) => String(record.group_id) === String(leadAgency.id))
       if (entitlement && entitlement.features?.create_opportunity === false) {
-        setLeadAgencyAccessMessage('You do not have permission to create Opportunities for this Group.')
+        if (!entitlement.plan_code || entitlement.plan_code === 'none' || entitlement.access_state === 'unlicensed') {
+          setLeadAgencyAccessMessage('This organization does not have an active subscription for this feature.')
+        } else if (entitlement.access_state === 'expired_grace') {
+          setLeadAgencyAccessMessage('This subscription is in its renewal grace period. Existing records can be viewed, but changes are disabled until renewal.')
+        } else if (entitlement.access_state !== 'active') {
+          setLeadAgencyAccessMessage('This organization account is locked or restricted pending subscription renewal.')
+        } else if (entitlement.rosana_role === 'technical_user' && !entitlement.has_technical_seat) {
+          setLeadAgencyAccessMessage('A Technical User seat is required before you can analyze or modify technical records.')
+        } else {
+          setLeadAgencyAccessMessage('You do not have permission to create Opportunities for this Group.')
+        }
       } else {
         setLeadAgencyAccessMessage('')
       }
