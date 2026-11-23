@@ -181,6 +181,14 @@ def has_group_permission(user, group, permission_code):
         return False
     if user.is_staff and user.is_active:
         return True
+    # The group administrator must be able to maintain member roles and
+    # permissions even when the current plan has not yet defined a separate
+    # manage-users feature. Subscription lifecycle restrictions still apply.
+    if is_admin(user, group) and permission_code == 'change_user_permissions':
+        from accounts.entitlements import subscription_access_state, subscription_for_group
+
+        subscription = subscription_for_group(group)
+        return subscription is None or subscription_access_state(subscription) == 'active'
     feature_code = GROUP_PERMISSION_FEATURES.get(permission_code)
     if feature_code and not has_group_feature(user, group, feature_code):
         return False

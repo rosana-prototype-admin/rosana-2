@@ -255,6 +255,19 @@ class SubscribedGroupEntitlementTests(GroupsTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+    def test_group_admin_can_edit_member_role_without_plan_manage_users_feature(self):
+        target = User.objects.create_user(username='target', email='target@example.com', password='pw')
+        Membership.objects.create(user=target, group=self.group)
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(
+            f'/api/groups/{self.group.pk}/members/{target.pk}/',
+            {'rosana_role': RosanaRole.FINANCIAL_ADMIN},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        target_membership = Membership.objects.get(group=self.group, user=target)
+        self.assertEqual(target_membership.rosana_role, RosanaRole.FINANCIAL_ADMIN)
+
     def test_expired_group_admin_cannot_rename_group(self):
         self.subscription.ends_at = timezone.now() - timedelta(days=100)
         self.subscription.save(update_fields=['ends_at'])
