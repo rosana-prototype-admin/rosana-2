@@ -4,6 +4,7 @@ import { updateCommentsEnabled } from '../api/projects'
 import CommentNode from './CommentNode'
 import { useAuth } from '../hooks/useAuth'
 import './CommentThread.css'
+import { apiErrorMessage } from '../utils/apiError'
 
 export default function CommentThread({ projectId, isOwner, commentsEnabled: initialCommentsEnabled }) {
   const { user } = useAuth()
@@ -87,8 +88,8 @@ export default function CommentThread({ projectId, isOwner, commentsEnabled: ini
     try {
       const updated = await updateCommentsEnabled(projectId, !commentsEnabled)
       setCommentsEnabled(updated.comments_enabled)
-    } catch {
-      setToggleError('Unable to update comment settings. Please try again.')
+    } catch (err) {
+      setToggleError(apiErrorMessage(err, 'Unable to update comment settings. Please try again.'))
     } finally {
       setIsTogglingEnabled(false)
     }

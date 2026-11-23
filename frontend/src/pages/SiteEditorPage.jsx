@@ -15,6 +15,7 @@ import { useAuth } from '../hooks/useAuth'
 import { formatDate } from '../utils/formatDate'
 import { ROAD_CLASS_OPTIONS } from '../utils/roadClasses'
 import { formatAnnualOutcome } from '../utils/annualOutcomeDisplay'
+import { apiErrorMessage } from '../utils/apiError'
 import '../styles/editorForm.css'
 import '../styles/formFeedback.css'
 import '../styles/actionToolbar.css'
@@ -574,8 +575,8 @@ export default function SiteEditorPage() {
     try {
       const updated = await updateStrategy(strategy.id, { selected: !strategy.selected })
       setStrategies((current) => current.map((row) => (row.id === updated.id ? updated : row)))
-    } catch {
-      setStrategyError('Unable to update this strategy. Please try again.')
+    } catch (err) {
+      setStrategyError(apiErrorMessage(err, 'Unable to update this strategy. Please try again.'))
     }
   }
 
@@ -587,8 +588,8 @@ export default function SiteEditorPage() {
       const updated = await updateStrategy(selectedStrategy.id, { details })
       setStrategies((current) => current.map((row) => (row.id === updated.id ? updated : row)))
       setIsStrategyDialogOpen(false)
-    } catch {
-      setStrategyDialogError('Unable to save this strategy. Please try again.')
+    } catch (err) {
+      setStrategyDialogError(apiErrorMessage(err, 'Unable to save this strategy. Please try again.'))
     } finally {
       setIsSubmittingStrategy(false)
     }

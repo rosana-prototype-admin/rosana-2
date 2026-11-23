@@ -3,6 +3,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import BasePermission
 
 from projects.models import Opportunity, Project
+from accounts.entitlements import feature_denial_message
 from groups.permissions import has_opportunity_permission
 from projects.permissions import can_comment, can_read, entitled_opportunity_queryset
 
@@ -62,7 +63,7 @@ class CommentAncestorScopedMixin:
         if not project.comments_enabled:
             raise PermissionDenied('Comments are disabled for this project.')
         if not can_comment(self.request.user, project.opportunity):
-            raise PermissionDenied('Your subscription does not allow commenting on this Opportunity.')
+            raise PermissionDenied(feature_denial_message(self.request.user, 'comment', project.opportunity.lead_agency))
         if not has_opportunity_permission(
             self.request.user, project.opportunity, 'comment_existing_resources'
         ):

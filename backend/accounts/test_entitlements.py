@@ -10,6 +10,7 @@ from groups.models import Group, Membership, RosanaRole
 from .entitlements import (
     AccessState,
     can_use_feature,
+    feature_denial_message,
     can_view_existing,
     entitlement_context,
     subscription_access_state,
@@ -99,6 +100,21 @@ class EntitlementEngineTests(TestCase):
         self.assertIsNone(context.subscription)
         self.assertEqual(context.access_state, AccessState.UNLICENSED)
         self.assertFalse(can_use_feature(self.technical_user, 'analyze', self.organization))
+
+    def test_seatless_technical_user_receives_specific_denial_message(self):
+        SubscriptionSeat.objects.filter(subscription=self.subscription, user=self.technical_user).update(
+            released_at=timezone.now(),
+        )
+        self.assertIn('Technical User seat is required', feature_denial_message(
+            self.technical_user, 'analyze', self.organization,
+        ))
+
+    def test_expired_subscription_receives_renewal_message(self):
+        self.subscription.status = 'past_due'
+        self.subscription.save(update_fields=['status'])
+        self.assertIn('renewal grace period', feature_denial_message(
+            self.technical_user, 'analyze', self.organization,
+        ))
 
 
 class EntitlementEndpointTests(APITestCase):

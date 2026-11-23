@@ -11,6 +11,7 @@ import { formatDate } from '../utils/formatDate'
 import '../styles/editorForm.css'
 import '../styles/formFeedback.css'
 import '../styles/actionToolbar.css'
+import { apiErrorMessage } from '../utils/apiError'
 
 export default function ProjectEditorPage() {
   const { id } = useParams()
@@ -158,8 +159,8 @@ export default function ProjectEditorPage() {
     try {
       const site = await createSite(id, { title: 'Untitled Site', comment: '' })
       navigate(`/sites/${site.id}`)
-    } catch {
-      setSiteError('Unable to create a new site. Please try again.')
+    } catch (err) {
+      setSiteError(apiErrorMessage(err, 'Unable to create a new site. Please try again.'))
     } finally {
       setIsCreatingSite(false)
     }
@@ -177,8 +178,8 @@ export default function ProjectEditorPage() {
       await deleteSite(selectedSiteId)
       setSelectedSiteId(null)
       await loadSites()
-    } catch {
-      setSiteError('Unable to delete the site. Please try again.')
+    } catch (err) {
+      setSiteError(apiErrorMessage(err, 'Unable to delete the site. Please try again.'))
     } finally {
       setIsDeletingSite(false)
       setIsSiteDeleteDialogOpen(false)

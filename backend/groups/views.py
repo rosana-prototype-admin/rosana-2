@@ -114,7 +114,8 @@ class GroupViewSet(viewsets.ModelViewSet):
         if parent is not None and parent.admin_id != self.request.user.pk:
             raise PermissionDenied("You must be the parent group's admin to create a subgroup.")
         if parent is not None and not has_group_feature(self.request.user, parent, 'manage_groups'):
-            raise PermissionDenied('Your subscription does not allow creating subgroups.')
+            from accounts.entitlements import feature_denial_message
+            raise PermissionDenied(feature_denial_message(self.request.user, 'manage_groups', parent))
         serializer.save(admin=self.request.user)
 
     @action(detail=True, methods=['get'], url_path='members')

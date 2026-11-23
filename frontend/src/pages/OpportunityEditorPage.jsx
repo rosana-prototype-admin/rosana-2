@@ -14,6 +14,7 @@ import '../styles/editorForm.css'
 import '../styles/formFeedback.css'
 import '../styles/actionToolbar.css'
 import './OpportunityEditorPage.css'
+import { apiErrorMessage } from '../utils/apiError'
 
 const OPPORTUNITY_STATUS_OPTIONS = [
   { value: 'drafting', label: 'Drafting' },
@@ -353,8 +354,8 @@ export default function OpportunityEditorPage() {
     try {
       const project = await createProject(id, { title: 'Untitled Project', comment: '' })
       navigate(`/projects/${project.id}`)
-    } catch {
-      setProjectError('Unable to create a new project. Please try again.')
+    } catch (err) {
+      setProjectError(apiErrorMessage(err, 'Unable to create a new project. Please try again.'))
     } finally {
       setIsCreatingProject(false)
     }
@@ -372,8 +373,8 @@ export default function OpportunityEditorPage() {
       await deleteProject(selectedProjectId)
       setSelectedProjectId(null)
       await loadProjects()
-    } catch {
-      setProjectError('Unable to delete the project. Please try again.')
+    } catch (err) {
+      setProjectError(apiErrorMessage(err, 'Unable to delete the project. Please try again.'))
     } finally {
       setIsDeletingProject(false)
       setIsProjectDeleteDialogOpen(false)

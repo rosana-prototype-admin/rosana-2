@@ -193,6 +193,33 @@ def can_use_feature(user, feature_code, group=None):
     return plan_feature_enabled(context.subscription, feature_code)
 
 
+def feature_denial_message(user, feature_code, group=None):
+    """Return a user-facing explanation for why a feature is unavailable."""
+    context = entitlement_context(user, group)
+    if context.access_state == AccessState.UNLICENSED:
+        return 'This organization does not have an active subscription for this feature.'
+    if context.access_state == AccessState.EXPIRED_GRACE:
+        return 'This subscription is in its renewal grace period. Existing records can be viewed, but changes are disabled until renewal.'
+    if context.access_state == AccessState.EXPIRED_RESTRICTED:
+        return 'This subscription has restricted access because it has not been renewed.'
+    if context.access_state in {AccessState.EXPIRED_LOCKED, AccessState.ARCHIVE_DUE}:
+        return 'This organization account is locked pending subscription renewal.'
+    if feature_code == 'analyze' and context.rosana_role == RosanaRole.TECHNICAL_USER and not context.has_technical_seat:
+        return 'A Technical User seat is required before you can analyze or modify technical records.'
+    role_features = {
+        'view_existing': {RosanaRole.FINANCIAL_ADMIN, RosanaRole.TECHNICAL_ADMIN, RosanaRole.TECHNICAL_USER, RosanaRole.COMMENTER},
+        'comment': {RosanaRole.FINANCIAL_ADMIN, RosanaRole.TECHNICAL_ADMIN, RosanaRole.COMMENTER},
+        'analyze': {RosanaRole.TECHNICAL_ADMIN, RosanaRole.TECHNICAL_USER},
+        'manage_billing': {RosanaRole.FINANCIAL_ADMIN, RosanaRole.TECHNICAL_ADMIN},
+        'manage_users': {RosanaRole.TECHNICAL_ADMIN},
+        'manage_groups': {RosanaRole.TECHNICAL_ADMIN},
+        'delete_resources': {RosanaRole.TECHNICAL_ADMIN},
+    }
+    if context.rosana_role not in role_features.get(feature_code, set()):
+        return 'Your Rosana Role does not include this feature.'
+    return 'Your subscription plan does not include this feature.'
+
+
 def can_view_existing(user, group=None):
     """Whether a user may view resources belonging to an organization.
 
