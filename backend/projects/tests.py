@@ -110,7 +110,7 @@ class OpportunityCreationTests(OpportunityTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('status', response.data)
 
-    def test_create_opportunity_with_manager_who_is_lead_agency_member(self):
+    def test_create_opportunity_without_subscription_is_rejected(self):
         self.client.force_authenticate(user=self.manager)
         response = self.client.post(
             '/api/opportunities/',
@@ -122,15 +122,10 @@ class OpportunityCreationTests(OpportunityTestCase):
                 'manager': self.manager.pk,
             },
         )
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['manager'], self.manager.pk)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('active subscription', response.data['detail'])
 
-    def test_create_opportunity_with_manager_who_is_lead_agency_admin_but_not_a_member(self):
-        # Regression test: a Group's admin is tracked via Group.admin, not a
-        # Membership row, so they must be accepted as a valid manager even
-        # with no separate Membership -- this is what broke Opportunity
-        # creation (blank screen picking a lead agency) after Group Admin
-        # shipped, since the admin-only case wasn't covered before.
+    def test_group_admin_without_subscription_is_rejected(self):
         admin_only_group = Group.objects.create(name='Admin Only Agency', admin=self.stranger)
         self.client.force_authenticate(user=self.stranger)
         response = self.client.post(
@@ -143,8 +138,8 @@ class OpportunityCreationTests(OpportunityTestCase):
                 'manager': self.stranger.pk,
             },
         )
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['manager'], self.stranger.pk)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('active subscription', response.data['detail'])
 
     def test_create_opportunity_with_manager_not_in_lead_agency_fails(self):
         self.client.force_authenticate(user=self.manager)

@@ -67,9 +67,7 @@ class OpportunityViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lead_agency = serializer.validated_data['lead_agency']
         from accounts.entitlements import can_use_feature, feature_denial_message, subscription_for_group
-        if subscription_for_group(lead_agency) is not None and not can_use_feature(
-            self.request.user, 'analyze', lead_agency
-        ):
+        if not can_use_feature(self.request.user, 'analyze', lead_agency):
             raise PermissionDenied(feature_denial_message(self.request.user, 'analyze', lead_agency))
         if user_has_group_membership(self.request.user, lead_agency) and not has_group_permission(
             self.request.user, lead_agency, 'create_modify_opportunity'
@@ -83,11 +81,8 @@ class OpportunityViewSet(viewsets.ModelViewSet):
         # opportunity, only creates a brand-new one the requester can work with.
         opportunity = get_object_or_404(self.get_queryset(), pk=pk)
         from accounts.entitlements import can_use_feature, feature_denial_message, subscription_for_group
-        if subscription_for_group(opportunity.lead_agency) is not None and (
-            not can_use_feature(self.request.user, 'analyze', opportunity.lead_agency)
-            or not has_opportunity_permission(
-                self.request.user, opportunity, 'create_modify_opportunity'
-            )
+        if not can_use_feature(self.request.user, 'analyze', opportunity.lead_agency) or not has_opportunity_permission(
+            self.request.user, opportunity, 'create_modify_opportunity'
         ):
             raise PermissionDenied(feature_denial_message(self.request.user, 'analyze', opportunity.lead_agency))
         cloned = clone_opportunity(opportunity, requester=request.user)
