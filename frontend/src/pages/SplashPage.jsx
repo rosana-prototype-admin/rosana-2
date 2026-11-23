@@ -88,7 +88,7 @@ export default function SplashPage() {
     if (entitlement.access_state !== 'active') {
       return [`${label} has ${ACCESS_STATE_LABELS[entitlement.access_state] || 'restricted access'}.`]
     }
-    if (entitlement.organization_role === 'technical_user' && !entitlement.has_technical_seat) {
+    if (entitlement.rosana_role === 'technical_user' && !entitlement.has_technical_seat) {
       return [`${label} has not assigned you a Technical User seat.`]
     }
     return []

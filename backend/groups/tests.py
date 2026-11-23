@@ -8,7 +8,7 @@ from rest_framework.test import APITestCase
 from accounts.models import AuditEvent, Plan, PlanFeature, User, UserSubscription
 from geo.models import Jcode
 
-from .models import Group, Membership, OrganizationRole
+from .models import Group, Membership, RosanaRole
 
 
 class GroupsTestCase(APITestCase):
@@ -242,7 +242,7 @@ class SubscribedGroupEntitlementTests(GroupsTestCase):
         Membership.objects.create(
             user=self.other,
             group=self.group,
-            organization_role=OrganizationRole.TECHNICAL_ADMIN,
+            rosana_role=RosanaRole.TECHNICAL_ADMIN,
             permissions={'change_user_permissions': True},
         )
         target = User.objects.create_user(username='target', email='target@example.com', password='pw')
@@ -360,21 +360,21 @@ class MembershipTests(GroupsTestCase):
         membership = Membership.objects.get(group=group, user=self.other)
         self.assertEqual(membership.roles, ['Analyst', 'Lead'])
 
-    def test_admin_can_update_member_organization_role(self):
+    def test_admin_can_update_member_rosana_role(self):
         group = Group.objects.create(name='Agency', admin=self.admin)
         Membership.objects.create(user=self.other, group=group)
 
         self.client.force_authenticate(user=self.admin)
         response = self.client.patch(
             self.member_detail_url(group, self.other),
-            {'organization_role': OrganizationRole.FINANCIAL_ADMIN},
+            {'rosana_role': RosanaRole.FINANCIAL_ADMIN},
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         membership = Membership.objects.get(group=group, user=self.other)
-        self.assertEqual(membership.organization_role, OrganizationRole.FINANCIAL_ADMIN)
+        self.assertEqual(membership.rosana_role, RosanaRole.FINANCIAL_ADMIN)
 
-    def test_delegated_permission_cannot_change_organization_role(self):
+    def test_delegated_permission_cannot_change_rosana_role(self):
         group = Group.objects.create(name='Agency', admin=self.admin)
         editor = User.objects.create_user(username='role-editor', email='role-editor@example.com', password='pw')
         Membership.objects.create(user=editor, group=group, permissions={'change_user_permissions': True})
@@ -383,7 +383,7 @@ class MembershipTests(GroupsTestCase):
         self.client.force_authenticate(user=editor)
         response = self.client.patch(
             self.member_detail_url(group, self.other),
-            {'organization_role': OrganizationRole.TECHNICAL_ADMIN},
+            {'rosana_role': RosanaRole.TECHNICAL_ADMIN},
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
@@ -488,7 +488,7 @@ class MembershipTests(GroupsTestCase):
         response = self.client.get(self.members_url(parent))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
-        roles_by_username = {row['username']: row['rosana_role'] for row in response.data}
+        roles_by_username = {row['username']: row['group_admin_status'] for row in response.data}
         self.assertEqual(roles_by_username, {'admin': 'admin', 'other': 'member'})
 
 

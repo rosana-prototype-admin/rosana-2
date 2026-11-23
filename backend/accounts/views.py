@@ -154,7 +154,7 @@ class MyEntitlementsView(APIView):
                 'group_name': group.name,
                 'organization_id': context.group.id if context.group else None,
                 'organization_name': context.group.name if context.group else None,
-                'organization_role': context.organization_role,
+                'rosana_role': context.rosana_role,
                 'plan_code': subscription.plan_code if subscription else None,
                 'plan_name': subscription.plan.name if subscription and subscription.plan_id else None,
                 'access_state': context.access_state,

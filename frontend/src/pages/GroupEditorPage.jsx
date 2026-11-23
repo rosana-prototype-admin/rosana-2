@@ -237,7 +237,7 @@ export default function GroupEditorPage() {
   const canDeleteMembers = Boolean(canManage || currentMember?.permissions?.delete_user)
   const blankPermissions = useMemo(() => ({}), [])
 
-  async function handleSubmitMemberDialog({ userId, organizationRole, organizationalRole, permissions }) {
+  async function handleSubmitMemberDialog({ userId, rosanaRole, organizationalRole, permissions }) {
     setMemberDialogError('')
     setIsSubmittingMember(true)
     try {
@@ -255,7 +255,7 @@ export default function GroupEditorPage() {
         await changeGroupMemberRoles(
           id,
           selectedMember.id,
-          organizationRole,
+          rosanaRole,
           organizationalRole ? [organizationalRole] : [],
           canEditPermissions ? permissions : {},
         )
@@ -329,19 +329,19 @@ export default function GroupEditorPage() {
     { key: 'name', header: 'Name', sortValue: memberLabel, render: memberLabel },
     { key: 'email', header: 'Email' },
     {
-      key: 'rosana_role',
-      header: 'Rosana Role',
-      render: (member) => (member.rosana_role === 'admin' ? 'Admin' : 'Member'),
+      key: 'group_admin_status',
+      header: 'Group Admin Status',
+      render: (member) => (member.group_admin_status === 'admin' ? 'Admin' : 'Member'),
     },
     {
-      key: 'organization_role',
-      header: 'Organization Role',
+      key: 'rosana_role',
+      header: 'Rosana Role',
       render: (member) => ({
         financial_admin: 'Financial Admin',
         technical_admin: 'Technical Admin',
         technical_user: 'Technical User',
         commenter: 'Commenter',
-      }[member.organization_role] || member.organization_role),
+      }[member.rosana_role] || member.rosana_role),
     },
     {
       key: 'organizational_roles',
@@ -475,21 +475,21 @@ export default function GroupEditorPage() {
                 setInviteSuccessMessage('')
                 setIsMemberDialogOpen(true)
               }}
-              disabled={!selectedMember || selectedMember.rosana_role === 'admin' || !canEditPermissions}
+              disabled={!selectedMember || selectedMember.group_admin_status === 'admin' || !canEditPermissions}
             >
               Edit Organizational Role
             </button>
             <button
               type="button"
               onClick={() => setIsRemoveMemberDialogOpen(true)}
-              disabled={!selectedMember || selectedMember.rosana_role === 'admin' || isRemovingMember || !canDeleteMembers}
+              disabled={!selectedMember || selectedMember.group_admin_status === 'admin' || isRemovingMember || !canDeleteMembers}
             >
               Remove
             </button>
             <button
               type="button"
               onClick={() => setIsTransferAdminDialogOpen(true)}
-              disabled={!canManage || !selectedMember || selectedMember.rosana_role === 'admin' || isTransferringAdmin}
+              disabled={!canManage || !selectedMember || selectedMember.group_admin_status === 'admin' || isTransferringAdmin}
             >
               Transfer administration
             </button>
@@ -579,12 +579,12 @@ export default function GroupEditorPage() {
         isOpen={isMemberDialogOpen}
         mode={memberDialogMode}
         memberLabel={selectedMember ? memberLabel(selectedMember) : ''}
-        initialOrganizationRole={memberDialogMode === 'edit' ? (selectedMember?.organization_role ?? 'commenter') : 'commenter'}
+        initialRosanaRole={memberDialogMode === 'edit' ? (selectedMember?.rosana_role ?? 'commenter') : 'commenter'}
         initialRole={memberDialogMode === 'edit' ? (selectedMember?.organizational_roles[0] ?? '') : ''}
         initialPermissions={memberDialogMode === 'edit' ? (selectedMember?.permissions ?? blankPermissions) : blankPermissions}
         permissionDefinitions={permissionDefinitions}
         showPermissions={canEditPermissions}
-        canEditOrganizationRole={canManage}
+        canEditRosanaRole={canManage}
         permissionsLocked={memberDialogMode === 'edit' && selectedMember?.permissions_locked}
         isBusy={isSubmittingMember}
         error={memberDialogError}

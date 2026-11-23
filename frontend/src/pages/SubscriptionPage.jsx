@@ -58,7 +58,7 @@ export default function SubscriptionPage() {
       const accessible = Array.from(
         (data.entitlements || [])
           .filter((item) => (
-            item.organization_role === 'financial_admin' || item.organization_role === 'technical_admin'
+            item.rosana_role === 'financial_admin' || item.rosana_role === 'technical_admin'
           ))
           .reduce((organizationsById, item) => {
             const organizationId = item.organization_id || item.group_id
@@ -221,7 +221,7 @@ export default function SubscriptionPage() {
                 }}
               >
                 <strong>{organization.group_name}</strong>
-                <span>{label(organization.organization_role)}</span>
+                <span>{label(organization.rosana_role)}</span>
               </button>
             ))}
           </nav>

@@ -22,7 +22,7 @@ def can_read(user, opportunity):
     # Users outside the owning organization may still be invited external
     # reviewers, including during the post-expiry period.
     context = entitlement_context(user, opportunity.lead_agency)
-    if context.organization_role is None:
+    if context.rosana_role is None:
         return True
     return can_view_existing(user, opportunity.lead_agency)
 
@@ -43,7 +43,7 @@ def can_comment(user, opportunity):
     context = entitlement_context(user, opportunity.lead_agency)
     # An invited user from another organization retains review commenting
     # access throughout the expiration lifecycle.
-    if context.organization_role is None:
+    if context.rosana_role is None:
         return True
     return can_use_feature(user, 'comment', opportunity.lead_agency)
 

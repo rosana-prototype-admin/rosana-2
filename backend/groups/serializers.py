@@ -6,7 +6,7 @@ from geo.models import Jcode
 from geo.serializers import JcodeSerializer
 from notifications.models import Notification
 
-from .models import Group, Membership, OrganizationRole, group_creates_cycle
+from .models import Group, Membership, RosanaRole, group_creates_cycle
 from .permissions import GROUP_PERMISSION_CODES, default_group_permissions, normalize_group_permissions
 
 
@@ -65,7 +65,7 @@ class MembershipSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Membership
-        fields = ['id', 'group', 'user', 'organization_role', 'organizational_roles', 'permissions', 'created_at', 'modified_at']
+        fields = ['id', 'group', 'user', 'rosana_role', 'organizational_roles', 'permissions', 'created_at', 'modified_at']
         read_only_fields = ['id', 'group', 'user', 'created_at', 'modified_at']
 
     def validate_organizational_roles(self, value):
@@ -168,8 +168,8 @@ class GroupMemberSerializer(serializers.Serializer):
     first_name = serializers.CharField()
     last_name = serializers.CharField()
     email = serializers.EmailField()
-    rosana_role = serializers.ChoiceField(choices=['admin', 'member'])
-    organization_role = serializers.ChoiceField(choices=OrganizationRole.choices)
+    group_admin_status = serializers.ChoiceField(choices=['admin', 'member'])
+    rosana_role = serializers.ChoiceField(choices=RosanaRole.choices)
     organizational_roles = serializers.ListField(child=serializers.CharField(), default=list)
     permissions = serializers.JSONField()
     permissions_locked = serializers.BooleanField(default=False)

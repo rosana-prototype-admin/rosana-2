@@ -280,16 +280,16 @@ export default function GroupsPage() {
   const memberColumns = [
     { key: 'name', header: 'Name', sortValue: (member) => displayUserName(member), render: displayUserName },
     { key: 'email', header: 'Email' },
-    { key: 'rosana_role', header: 'Rosana Role', render: (member) => member.rosana_role === 'admin' ? 'Admin' : 'Member' },
+    { key: 'group_admin_status', header: 'Group Admin Status', render: (member) => member.group_admin_status === 'admin' ? 'Admin' : 'Member' },
     {
-      key: 'organization_role',
-      header: 'Organization Role',
+      key: 'rosana_role',
+      header: 'Rosana Role',
       render: (member) => ({
         financial_admin: 'Financial Admin',
         technical_admin: 'Technical Admin',
         technical_user: 'Technical User',
         commenter: 'Commenter',
-      }[member.organization_role] || member.organization_role),
+      }[member.rosana_role] || member.rosana_role),
     },
   ]
 

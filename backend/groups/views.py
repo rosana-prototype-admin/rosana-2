@@ -32,26 +32,26 @@ from .serializers import (
 
 def _group_members(group):
     """Flatten group members with system and organizational roles separated."""
-    def _entry(user, rosana_role, organization_role='commenter', organizational_roles=None, permissions=None, permissions_locked=False):
+    def _entry(user, group_admin_status, rosana_role='commenter', organizational_roles=None, permissions=None, permissions_locked=False):
         return {
             'id': user.id,
             'username': user.username,
             'first_name': user.first_name,
             'last_name': user.last_name,
             'email': user.email,
+            'group_admin_status': group_admin_status,
             'rosana_role': rosana_role,
-            'organization_role': organization_role,
             'organizational_roles': organizational_roles or [],
             'permissions': permissions if permissions is not None else default_group_permissions(),
             'permissions_locked': permissions_locked,
         }
 
-    members = [_entry(group.admin, 'admin', organization_role='technical_admin', permissions=all_group_permissions(), permissions_locked=True)]
+    members = [_entry(group.admin, 'admin', rosana_role='technical_admin', permissions=all_group_permissions(), permissions_locked=True)]
     members += [
         _entry(
             membership.user,
             'member',
-            membership.organization_role,
+            membership.rosana_role,
             membership.roles,
             membership.permissions,
         )
@@ -199,9 +199,9 @@ class GroupViewSet(viewsets.ModelViewSet):
 
         if not has_group_permission(request.user, group, 'change_user_permissions'):
             raise PermissionDenied('You do not have permission to edit member permissions.')
-        requested_organization_role = request.data.get('organization_role', membership.organization_role)
+        requested_rosana_role = request.data.get('rosana_role', membership.rosana_role)
         if (
-            requested_organization_role != membership.organization_role
+            requested_rosana_role != membership.rosana_role
             and request.user.pk != group.admin_id
             and not (request.user.is_staff and request.user.is_active)
         ):
@@ -215,7 +215,7 @@ class GroupViewSet(viewsets.ModelViewSet):
             membership,
             after={
                 'user_id': membership.user_id,
-                'organization_role': membership.organization_role,
+                'rosana_role': membership.rosana_role,
                 'permissions': membership.permissions,
             },
             group=group,

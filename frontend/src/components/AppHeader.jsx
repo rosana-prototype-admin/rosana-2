@@ -39,7 +39,7 @@ export default function AppHeader() {
     getMyEntitlements().then((data) => {
       if (!cancelled) {
         setCanViewSubscription((data.entitlements || []).some((item) => (
-          item.organization_role === 'financial_admin' || item.organization_role === 'technical_admin'
+          item.rosana_role === 'financial_admin' || item.rosana_role === 'technical_admin'
         )))
       }
     }).catch(() => {

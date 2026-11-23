@@ -17,12 +17,12 @@ export default function GroupMemberDialog({
   isOpen,
   mode,
   memberLabel,
-  initialOrganizationRole = 'commenter',
+  initialRosanaRole = 'commenter',
   initialRole = '',
   initialPermissions = {},
   permissionDefinitions = [],
   showPermissions = false,
-  canEditOrganizationRole = false,
+  canEditRosanaRole = false,
   permissionsLocked = false,
   isBusy = false,
   error,
@@ -31,7 +31,7 @@ export default function GroupMemberDialog({
 }) {
   const [query, setQuery] = useState('')
   const [selectedUser, setSelectedUser] = useState(null)
-  const [organizationRole, setOrganizationRole] = useState(initialOrganizationRole)
+  const [rosanaRole, setRosanaRole] = useState(initialRosanaRole)
   const [organizationalRole, setOrganizationalRole] = useState(initialRole)
   const [permissions, setPermissions] = useState(initialPermissions)
 
@@ -40,13 +40,13 @@ export default function GroupMemberDialog({
       if (isOpen) {
         setQuery('')
         setSelectedUser(null)
-        setOrganizationRole(initialOrganizationRole)
+        setRosanaRole(initialRosanaRole)
         setOrganizationalRole(initialRole)
         setPermissions(initialPermissions)
       }
     }
     resetForm()
-  }, [isOpen, initialOrganizationRole, initialRole, initialPermissions])
+  }, [isOpen, initialRosanaRole, initialRole, initialPermissions])
 
   useEffect(() => {
     if (!isOpen) return undefined
@@ -67,8 +67,8 @@ export default function GroupMemberDialog({
   function handleSubmit(event) {
     event.preventDefault()
     onSubmit(mode === 'invite'
-      ? { userId: selectedUser.id, organizationalRole: organizationalRole.trim(), organizationRole, permissions }
-      : { organizationalRole: organizationalRole.trim(), organizationRole, permissions })
+      ? { userId: selectedUser.id, organizationalRole: organizationalRole.trim(), rosanaRole, permissions }
+      : { organizationalRole: organizationalRole.trim(), rosanaRole, permissions })
   }
 
   return (
@@ -102,18 +102,18 @@ export default function GroupMemberDialog({
 
         {mode === 'edit' && (
           <label className="editor-field">
-            <span className="label">Organization Role</span>
+            <span className="label">Rosana Role</span>
             <select
-              value={organizationRole}
-              onChange={(event) => setOrganizationRole(event.target.value)}
-              disabled={!canEditOrganizationRole}
+              value={rosanaRole}
+              onChange={(event) => setRosanaRole(event.target.value)}
+              disabled={!canEditRosanaRole}
             >
               <option value="financial_admin">Financial Admin</option>
               <option value="technical_admin">Technical Admin</option>
               <option value="technical_user">Technical User</option>
               <option value="commenter">Commenter</option>
             </select>
-            {!canEditOrganizationRole && <span className="text-sm">Only the group administrator can change this role.</span>}
+            {!canEditRosanaRole && <span className="text-sm">Only the group administrator can change this role.</span>}
           </label>
         )}
 

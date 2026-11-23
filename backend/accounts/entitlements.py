@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from django.utils import timezone
 
-from groups.models import Group, Membership, OrganizationRole
+from groups.models import Group, Membership, RosanaRole
 
 from .models import PlanFeature, SubscriptionSeatType, SubscriptionStatus, UserSubscription
 
@@ -22,7 +22,7 @@ class EntitlementContext:
     user: object
     group: Group | None
     subscription: UserSubscription | None
-    organization_role: str | None
+    rosana_role: str | None
     has_technical_seat: bool
     access_state: str
 
@@ -91,9 +91,9 @@ def subscription_access_state(subscription, now=None):
 
 def _organization_membership(user, group):
     if group.admin_id == user.pk:
-        return None, OrganizationRole.TECHNICAL_ADMIN
+        return None, RosanaRole.TECHNICAL_ADMIN
     membership = Membership.objects.filter(group=group, user=user).first()
-    return membership, membership.organization_role if membership else None
+    return membership, membership.rosana_role if membership else None
 
 
 def entitlement_context(user, group=None):
@@ -151,9 +151,9 @@ def user_entitlement_plan_codes(user):
         if (
             context.access_state == AccessState.ACTIVE
             and context.subscription.plan_code
-            and context.organization_role in {OrganizationRole.TECHNICAL_ADMIN, OrganizationRole.TECHNICAL_USER}
+            and context.rosana_role in {RosanaRole.TECHNICAL_ADMIN, RosanaRole.TECHNICAL_USER}
             and (
-                context.organization_role == OrganizationRole.TECHNICAL_ADMIN
+                context.rosana_role == RosanaRole.TECHNICAL_ADMIN
                 or context.has_technical_seat
             )
         )
@@ -174,19 +174,19 @@ def can_use_feature(user, feature_code, group=None):
     if user.is_staff:
         return True
 
-    role = context.organization_role
+    role = context.rosana_role
     role_features = {
-        'view_existing': {OrganizationRole.FINANCIAL_ADMIN, OrganizationRole.TECHNICAL_ADMIN, OrganizationRole.TECHNICAL_USER, OrganizationRole.COMMENTER},
-        'comment': {OrganizationRole.FINANCIAL_ADMIN, OrganizationRole.TECHNICAL_ADMIN, OrganizationRole.COMMENTER},
-        'analyze': {OrganizationRole.TECHNICAL_ADMIN, OrganizationRole.TECHNICAL_USER},
-        'manage_billing': {OrganizationRole.FINANCIAL_ADMIN, OrganizationRole.TECHNICAL_ADMIN},
-        'manage_users': {OrganizationRole.TECHNICAL_ADMIN},
-        'manage_groups': {OrganizationRole.TECHNICAL_ADMIN},
-        'delete_resources': {OrganizationRole.TECHNICAL_ADMIN},
+        'view_existing': {RosanaRole.FINANCIAL_ADMIN, RosanaRole.TECHNICAL_ADMIN, RosanaRole.TECHNICAL_USER, RosanaRole.COMMENTER},
+        'comment': {RosanaRole.FINANCIAL_ADMIN, RosanaRole.TECHNICAL_ADMIN, RosanaRole.COMMENTER},
+        'analyze': {RosanaRole.TECHNICAL_ADMIN, RosanaRole.TECHNICAL_USER},
+        'manage_billing': {RosanaRole.FINANCIAL_ADMIN, RosanaRole.TECHNICAL_ADMIN},
+        'manage_users': {RosanaRole.TECHNICAL_ADMIN},
+        'manage_groups': {RosanaRole.TECHNICAL_ADMIN},
+        'delete_resources': {RosanaRole.TECHNICAL_ADMIN},
     }
     if role not in role_features.get(feature_code, set()):
         return False
-    if feature_code == 'analyze' and role == OrganizationRole.TECHNICAL_USER and not context.has_technical_seat:
+    if feature_code == 'analyze' and role == RosanaRole.TECHNICAL_USER and not context.has_technical_seat:
         return False
     return plan_feature_enabled(context.subscription, feature_code)
 
@@ -203,11 +203,11 @@ def can_view_existing(user, group=None):
         return True
     if user.is_staff:
         return True
-    if context.organization_role not in {
-        OrganizationRole.FINANCIAL_ADMIN,
-        OrganizationRole.TECHNICAL_ADMIN,
-        OrganizationRole.TECHNICAL_USER,
-        OrganizationRole.COMMENTER,
+    if context.rosana_role not in {
+        RosanaRole.FINANCIAL_ADMIN,
+        RosanaRole.TECHNICAL_ADMIN,
+        RosanaRole.TECHNICAL_USER,
+        RosanaRole.COMMENTER,
     }:
         return False
     if context.access_state == AccessState.EXPIRED_GRACE:
@@ -222,9 +222,9 @@ def can_view_billing(user, group=None):
     context = entitlement_context(user, group)
     if user is not None and user.is_staff and user.is_active:
         return True
-    return context.organization_role in {
-        OrganizationRole.FINANCIAL_ADMIN,
-        OrganizationRole.TECHNICAL_ADMIN,
+    return context.rosana_role in {
+        RosanaRole.FINANCIAL_ADMIN,
+        RosanaRole.TECHNICAL_ADMIN,
     }
 
 
@@ -233,7 +233,7 @@ def can_change_billing(user, group=None):
     context = entitlement_context(user, group)
     if user is not None and user.is_staff and user.is_active:
         return True
-    if context.organization_role != OrganizationRole.FINANCIAL_ADMIN:
+    if context.rosana_role != RosanaRole.FINANCIAL_ADMIN:
         return False
     return context.access_state != AccessState.ARCHIVE_DUE
 
@@ -244,6 +244,6 @@ def can_manage_seats(user, group=None):
     if user is not None and user.is_staff and user.is_active:
         return True
     return (
-        context.organization_role == OrganizationRole.TECHNICAL_ADMIN
+        context.rosana_role == RosanaRole.TECHNICAL_ADMIN
         and context.access_state == AccessState.ACTIVE
     )

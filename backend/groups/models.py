@@ -6,7 +6,7 @@ from django.db import models
 from .permissions import default_group_permissions
 
 
-class OrganizationRole(models.TextChoices):
+class RosanaRole(models.TextChoices):
     FINANCIAL_ADMIN = 'financial_admin', 'Financial Admin'
     TECHNICAL_ADMIN = 'technical_admin', 'Technical Admin'
     TECHNICAL_USER = 'technical_user', 'Technical User'
@@ -99,10 +99,10 @@ class Membership(models.Model):
         related_name='memberships',
     )
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='memberships')
-    organization_role = models.CharField(
+    rosana_role = models.CharField(
         max_length=20,
-        choices=OrganizationRole.choices,
-        default=OrganizationRole.COMMENTER,
+        choices=RosanaRole.choices,
+        default=RosanaRole.COMMENTER,
     )
     roles = models.JSONField(default=list, blank=True)
     permissions = models.JSONField(default=default_group_permissions, blank=True)

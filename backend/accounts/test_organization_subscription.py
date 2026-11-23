@@ -5,7 +5,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from groups.models import Group, Membership, OrganizationRole
+from groups.models import Group, Membership, RosanaRole
 
 from .models import Plan, PlanFeature, SubscriptionSeat, User, UserSubscription
 
@@ -25,12 +25,12 @@ class OrganizationSubscriptionWorkflowTests(APITestCase):
         Membership.objects.create(
             group=self.organization,
             user=self.financial_admin,
-            organization_role=OrganizationRole.FINANCIAL_ADMIN,
+            rosana_role=RosanaRole.FINANCIAL_ADMIN,
         )
         Membership.objects.create(
             group=self.organization,
             user=self.commenter,
-            organization_role=OrganizationRole.COMMENTER,
+            rosana_role=RosanaRole.COMMENTER,
         )
         self.plan = Plan.objects.create(code='self-service-test', name='Self-Service Test')
         self.new_plan = Plan.objects.create(code='self-service-plus', name='Self-Service Plus')

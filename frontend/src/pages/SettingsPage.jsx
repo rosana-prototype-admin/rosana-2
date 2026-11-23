@@ -453,7 +453,7 @@ export default function SettingsPage() {
             </div>
             <dl className="settings-entitlement-meta">
               <div><dt>Plan</dt><dd>{entitlement.plan_name || entitlement.plan_code || 'None'}</dd></div>
-              <div><dt>Organization role</dt><dd>{entitlement.organization_role || 'Not assigned'}</dd></div>
+              <div><dt>Rosana role</dt><dd>{entitlement.rosana_role || 'Not assigned'}</dd></div>
               <div><dt>Technical seat</dt><dd>{entitlement.has_technical_seat ? 'Assigned' : 'Not assigned'}</dd></div>
             </dl>
             <div className="settings-feature-list">

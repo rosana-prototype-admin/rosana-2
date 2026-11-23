@@ -5,7 +5,7 @@ from django.utils import timezone
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
-from groups.models import Group, Membership, OrganizationRole
+from groups.models import Group, Membership, RosanaRole
 
 from .entitlements import (
     AccessState,
@@ -32,12 +32,12 @@ class EntitlementEngineTests(TestCase):
         Membership.objects.create(
             group=self.organization,
             user=self.technical_user,
-            organization_role=OrganizationRole.TECHNICAL_USER,
+            rosana_role=RosanaRole.TECHNICAL_USER,
         )
         Membership.objects.create(
             group=self.organization,
             user=self.commenter,
-            organization_role=OrganizationRole.COMMENTER,
+            rosana_role=RosanaRole.COMMENTER,
         )
         self.plan = Plan.objects.create(code='test-plan', name='Test Plan')
         for feature in ('analyze', 'comment', 'view_existing'):
@@ -56,7 +56,7 @@ class EntitlementEngineTests(TestCase):
     def test_context_resolves_subscription_and_role(self):
         context = entitlement_context(self.technical_user, self.organization)
         self.assertEqual(context.subscription, self.subscription)
-        self.assertEqual(context.organization_role, OrganizationRole.TECHNICAL_USER)
+        self.assertEqual(context.rosana_role, RosanaRole.TECHNICAL_USER)
         self.assertTrue(context.has_technical_seat)
         self.assertEqual(context.access_state, AccessState.ACTIVE)
 
