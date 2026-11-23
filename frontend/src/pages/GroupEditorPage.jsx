@@ -264,9 +264,13 @@ export default function GroupEditorPage() {
       }
     } catch (err) {
       const data = err.response?.data
-      const message = Array.isArray(data?.non_field_errors)
-        ? data.non_field_errors[0]
-        : 'Unable to save this member. Please try again.'
+      const message = data?.detail
+        || data?.rosana_role?.[0]
+        || data?.organizational_roles?.[0]
+        || data?.permissions?.[0]
+        || data?.non_field_errors?.[0]
+        || (typeof data === 'string' ? data : null)
+        || 'Unable to save this member. Please try again.'
       setMemberDialogError(message)
     } finally {
       setIsSubmittingMember(false)
