@@ -237,7 +237,7 @@ export default function GroupEditorPage() {
   const canDeleteMembers = Boolean(canManage || currentMember?.permissions?.delete_user)
   const blankPermissions = useMemo(() => ({}), [])
 
-  async function handleSubmitMemberDialog({ userId, organizationalRole, permissions }) {
+  async function handleSubmitMemberDialog({ userId, organizationRole, organizationalRole, permissions }) {
     setMemberDialogError('')
     setIsSubmittingMember(true)
     try {
@@ -255,6 +255,7 @@ export default function GroupEditorPage() {
         await changeGroupMemberRoles(
           id,
           selectedMember.id,
+          organizationRole,
           organizationalRole ? [organizationalRole] : [],
           canEditPermissions ? permissions : {},
         )
@@ -331,6 +332,16 @@ export default function GroupEditorPage() {
       key: 'rosana_role',
       header: 'Rosana Role',
       render: (member) => (member.rosana_role === 'admin' ? 'Admin' : 'Member'),
+    },
+    {
+      key: 'organization_role',
+      header: 'Organization Role',
+      render: (member) => ({
+        financial_admin: 'Financial Admin',
+        technical_admin: 'Technical Admin',
+        technical_user: 'Technical User',
+        commenter: 'Commenter',
+      }[member.organization_role] || member.organization_role),
     },
     {
       key: 'organizational_roles',
@@ -568,10 +579,12 @@ export default function GroupEditorPage() {
         isOpen={isMemberDialogOpen}
         mode={memberDialogMode}
         memberLabel={selectedMember ? memberLabel(selectedMember) : ''}
+        initialOrganizationRole={memberDialogMode === 'edit' ? (selectedMember?.organization_role ?? 'commenter') : 'commenter'}
         initialRole={memberDialogMode === 'edit' ? (selectedMember?.organizational_roles[0] ?? '') : ''}
         initialPermissions={memberDialogMode === 'edit' ? (selectedMember?.permissions ?? blankPermissions) : blankPermissions}
         permissionDefinitions={permissionDefinitions}
         showPermissions={canEditPermissions}
+        canEditOrganizationRole={canManage}
         permissionsLocked={memberDialogMode === 'edit' && selectedMember?.permissions_locked}
         isBusy={isSubmittingMember}
         error={memberDialogError}

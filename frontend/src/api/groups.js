@@ -75,8 +75,9 @@ export async function leaveGroup(groupId) {
   await client.post(`/groups/${groupId}/leave/`)
 }
 
-export async function changeGroupMemberRoles(groupId, userId, organizationalRoles, permissions) {
+export async function changeGroupMemberRoles(groupId, userId, organizationRole, organizationalRoles, permissions) {
   const { data } = await client.patch(`/groups/${groupId}/members/${userId}/`, {
+    organization_role: organizationRole,
     organizational_roles: organizationalRoles,
     permissions,
   })

@@ -281,6 +281,16 @@ export default function GroupsPage() {
     { key: 'name', header: 'Name', sortValue: (member) => displayUserName(member), render: displayUserName },
     { key: 'email', header: 'Email' },
     { key: 'rosana_role', header: 'Rosana Role', render: (member) => member.rosana_role === 'admin' ? 'Admin' : 'Member' },
+    {
+      key: 'organization_role',
+      header: 'Organization Role',
+      render: (member) => ({
+        financial_admin: 'Financial Admin',
+        technical_admin: 'Technical Admin',
+        technical_user: 'Technical User',
+        commenter: 'Commenter',
+      }[member.organization_role] || member.organization_role),
+    },
   ]
 
   return (

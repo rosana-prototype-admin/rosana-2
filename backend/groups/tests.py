@@ -360,6 +360,34 @@ class MembershipTests(GroupsTestCase):
         membership = Membership.objects.get(group=group, user=self.other)
         self.assertEqual(membership.roles, ['Analyst', 'Lead'])
 
+    def test_admin_can_update_member_organization_role(self):
+        group = Group.objects.create(name='Agency', admin=self.admin)
+        Membership.objects.create(user=self.other, group=group)
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(
+            self.member_detail_url(group, self.other),
+            {'organization_role': OrganizationRole.FINANCIAL_ADMIN},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        membership = Membership.objects.get(group=group, user=self.other)
+        self.assertEqual(membership.organization_role, OrganizationRole.FINANCIAL_ADMIN)
+
+    def test_delegated_permission_cannot_change_organization_role(self):
+        group = Group.objects.create(name='Agency', admin=self.admin)
+        editor = User.objects.create_user(username='role-editor', email='role-editor@example.com', password='pw')
+        Membership.objects.create(user=editor, group=group, permissions={'change_user_permissions': True})
+        Membership.objects.create(user=self.other, group=group)
+
+        self.client.force_authenticate(user=editor)
+        response = self.client.patch(
+            self.member_detail_url(group, self.other),
+            {'organization_role': OrganizationRole.TECHNICAL_ADMIN},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_member_with_permission_can_update_member_permissions(self):
         group = Group.objects.create(name='Agency', admin=self.admin)
         editor = User.objects.create_user(username='editor', email='editor@example.com', password='pw')

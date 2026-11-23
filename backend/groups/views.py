@@ -199,6 +199,13 @@ class GroupViewSet(viewsets.ModelViewSet):
 
         if not has_group_permission(request.user, group, 'change_user_permissions'):
             raise PermissionDenied('You do not have permission to edit member permissions.')
+        requested_organization_role = request.data.get('organization_role', membership.organization_role)
+        if (
+            requested_organization_role != membership.organization_role
+            and request.user.pk != group.admin_id
+            and not (request.user.is_staff and request.user.is_active)
+        ):
+            raise PermissionDenied('Only the group administrator may change organization roles.')
         serializer = MembershipSerializer(membership, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -206,7 +213,11 @@ class GroupViewSet(viewsets.ModelViewSet):
             request,
             'group.member_permissions_changed',
             membership,
-            after={'user_id': membership.user_id, 'permissions': membership.permissions},
+            after={
+                'user_id': membership.user_id,
+                'organization_role': membership.organization_role,
+                'permissions': membership.permissions,
+            },
             group=group,
         )
         return Response(GroupMemberSerializer(_group_members(group), many=True).data)
