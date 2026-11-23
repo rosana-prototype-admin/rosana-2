@@ -99,6 +99,7 @@ class GroupInviteSerializer(serializers.Serializer):
     pending GROUP_INVITE Notification rather than adding the member directly."""
 
     user_id = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), source='user', write_only=True)
+    rosana_role = serializers.ChoiceField(choices=RosanaRole.choices, default=RosanaRole.COMMENTER)
     organizational_roles = serializers.ListField(source='roles', default=list)
     permissions = serializers.JSONField(default=default_group_permissions)
 
@@ -132,6 +133,7 @@ class GroupInviteSerializer(serializers.Serializer):
             group=self.context['group'],
             user=self.validated_data['user'],
             notification_type=Notification.Type.GROUP_INVITE,
+            rosana_role=self.validated_data['rosana_role'],
             roles=self.validated_data['roles'],
             permissions=self.validated_data['permissions'],
         )

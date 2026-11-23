@@ -2,6 +2,7 @@ from django.conf import settings
 from django.db import models
 
 from groups.permissions import default_group_permissions
+from groups.models import RosanaRole
 
 
 class Notification(models.Model):
@@ -27,6 +28,11 @@ class Notification(models.Model):
     )
     roles = models.JSONField(default=list, blank=True)  # only meaningful for GROUP_INVITE; applied on accept
     permissions = models.JSONField(default=default_group_permissions, blank=True)  # only meaningful for GROUP_INVITE
+    rosana_role = models.CharField(
+        max_length=20,
+        choices=RosanaRole.choices,
+        default=RosanaRole.COMMENTER,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
 

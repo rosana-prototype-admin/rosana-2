@@ -12,12 +12,20 @@ function userLabel(user) {
 function describe(notification) {
   const groupName = notification.group?.name || 'this group'
   if (notification.notification_type === 'group_invite') {
+    const rosanaRoleLabels = {
+      financial_admin: 'Financial Admin',
+      technical_admin: 'Technical Admin',
+      technical_user: 'Technical User',
+      commenter: 'Commenter',
+    }
     const organizationalRoles = Array.isArray(notification.organizational_roles)
       ? notification.organizational_roles
       : []
-    const roleSuffix = organizationalRoles.length > 0
-      ? ` as ${organizationalRoles.join(', ')}`
-      : ''
+    const assignedRoles = [
+      rosanaRoleLabels[notification.rosana_role],
+      ...organizationalRoles,
+    ].filter(Boolean)
+    const roleSuffix = assignedRoles.length > 0 ? ` as ${assignedRoles.join(' / ')}` : ''
     return `You've been invited to join "${groupName}"${roleSuffix}.`
   }
   return `${userLabel(notification.user)} requested to join "${groupName}".`

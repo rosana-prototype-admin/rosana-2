@@ -244,6 +244,7 @@ export default function GroupEditorPage() {
       if (memberDialogMode === 'invite') {
         await inviteGroupMember(id, {
           userId,
+          rosanaRole,
           organizationalRoles: organizationalRole ? [organizationalRole] : [],
           permissions: canEditPermissions ? permissions : {},
         })

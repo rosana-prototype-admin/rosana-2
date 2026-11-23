@@ -13,7 +13,7 @@ class NotificationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Notification
-        fields = ['id', 'notification_type', 'status', 'group', 'user', 'organizational_roles', 'permissions', 'is_requester', 'created_at', 'modified_at']
+        fields = ['id', 'notification_type', 'status', 'group', 'user', 'rosana_role', 'organizational_roles', 'permissions', 'is_requester', 'created_at', 'modified_at']
         read_only_fields = fields
 
     def get_group(self, obj):

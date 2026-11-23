@@ -100,7 +100,7 @@ export default function GroupMemberDialog({
           </label>
         )}
 
-        {mode === 'edit' && (
+        {(mode === 'edit' || mode === 'invite') && (
           <label className="editor-field">
             <span className="label">Rosana Role</span>
             <select
@@ -113,7 +113,7 @@ export default function GroupMemberDialog({
               <option value="technical_user">Technical User</option>
               <option value="commenter">Commenter</option>
             </select>
-            {!canEditRosanaRole && <span className="text-sm">Only the group administrator can change this role.</span>}
+            {!canEditRosanaRole && <span className="text-sm">Only the group administrator can assign this role.</span>}
           </label>
         )}
 

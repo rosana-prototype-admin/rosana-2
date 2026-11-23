@@ -137,6 +137,12 @@ class GroupViewSet(viewsets.ModelViewSet):
             raise PermissionDenied('You do not have permission to invite users to this group.')
         serializer = GroupInviteSerializer(data=request.data, context={'group': group})
         serializer.is_valid(raise_exception=True)
+        if (
+            serializer.validated_data['rosana_role'] != 'commenter'
+            and request.user.pk != group.admin_id
+            and not (request.user.is_staff and request.user.is_active)
+        ):
+            raise PermissionDenied('Only the group administrator may assign a Rosana Role during invitation.')
         if any(serializer.validated_data['permissions'].values()) and not has_group_permission(
             request.user, group, 'change_user_permissions'
         ):

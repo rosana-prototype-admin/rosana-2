@@ -2,7 +2,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from accounts.models import User
-from groups.models import Group, Membership
+from groups.models import Group, Membership, RosanaRole
 
 from .models import Notification
 
@@ -44,6 +44,24 @@ class GroupInviteTests(NotificationsTestCase):
         self.assertFalse(Membership.objects.filter(group=group, user=self.other).exists())
         notification = Notification.objects.get(group=group, user=self.other)
         self.assertEqual(notification.roles, ['Coordinator'])
+        self.assertEqual(notification.rosana_role, RosanaRole.COMMENTER)
+
+    def test_invite_role_is_applied_when_accepted(self):
+        group = Group.objects.create(name='Agency', admin=self.admin)
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            self.invite_url(group),
+            {'user_id': self.other.pk, 'rosana_role': RosanaRole.TECHNICAL_USER},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        notification = Notification.objects.get(group=group, user=self.other)
+        self.assertEqual(notification.rosana_role, RosanaRole.TECHNICAL_USER)
+
+        self.client.force_authenticate(user=self.other)
+        self.assertEqual(self.client.post(self.accept_url(notification)).status_code, status.HTTP_200_OK)
+        membership = Membership.objects.get(group=group, user=self.other)
+        self.assertEqual(membership.rosana_role, RosanaRole.TECHNICAL_USER)
 
     def test_invite_permissions_are_copied_when_accepted(self):
         group = Group.objects.create(name='Agency', admin=self.admin)
@@ -288,6 +306,7 @@ class NotificationAcceptDeclineTests(NotificationsTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         membership = Membership.objects.get(group=group, user=self.other)
         # Join requests never carry roles.
+        self.assertEqual(membership.rosana_role, RosanaRole.COMMENTER)
         self.assertEqual(membership.roles, [])
         self.assertFalse(any(membership.permissions.values()))
 

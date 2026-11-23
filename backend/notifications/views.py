@@ -6,7 +6,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from accounts.audit import record_admin_event
-from groups.models import Membership
+from groups.models import Membership, RosanaRole
 from groups.permissions import has_group_permission
 
 from .models import Notification
@@ -58,7 +58,14 @@ class NotificationViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, view
                 raise ValidationError('This user must be a member of the parent group before joining this subgroup.')
             roles = notification.roles if notification.notification_type == Notification.Type.GROUP_INVITE else []
             group_permissions = notification.permissions if notification.notification_type == Notification.Type.GROUP_INVITE else {}
-            Membership.objects.create(group=group, user=target_user, roles=roles, permissions=group_permissions)
+            rosana_role = notification.rosana_role if notification.notification_type == Notification.Type.GROUP_INVITE else RosanaRole.COMMENTER
+            Membership.objects.create(
+                group=group,
+                user=target_user,
+                rosana_role=rosana_role,
+                roles=roles,
+                permissions=group_permissions,
+            )
 
         notification.status = new_status
         notification.save(update_fields=['status', 'modified_at'])
