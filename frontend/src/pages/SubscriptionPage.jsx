@@ -54,10 +54,10 @@ export default function SubscriptionPage() {
 
   useEffect(() => {
     let cancelled = false
-    getMyEntitlements().then((data) => {
+    getMyEntitlements().then((records) => {
       if (cancelled) return
       const accessible = Array.from(
-        (data.entitlements || [])
+        records
           .filter((item) => (
             item.is_platform_admin ||
             item.rosana_role === 'financial_admin' || item.rosana_role === 'technical_admin'

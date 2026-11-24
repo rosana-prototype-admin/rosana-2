@@ -36,9 +36,10 @@ export default function AppHeader() {
 
   useEffect(() => {
     let cancelled = false
-    getMyEntitlements().then((data) => {
+    getMyEntitlements().then((records) => {
       if (!cancelled) {
-        setCanViewSubscription((data.entitlements || []).some((item) => (
+        setCanViewSubscription(records.some((item) => (
+          item.is_platform_admin ||
           item.rosana_role === 'financial_admin' || item.rosana_role === 'technical_admin'
         )))
       }
