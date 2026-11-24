@@ -359,6 +359,30 @@ class MembershipEndpointTests(OpportunityTestCase):
 
 
 class CloningTests(OpportunityTestCase):
+    def setUp(self):
+        super().setUp()
+
+        plan = Plan.objects.create(
+            code='clone-test',
+            name='Clone test plan',
+        )
+        PlanFeature.objects.create(
+            plan=plan,
+            feature_code='analyze',
+            enabled=True,
+        )
+        PlanFeature.objects.create(
+            plan=plan,
+            feature_code='view_existing',
+            enabled=True,
+        )
+        UserSubscription.objects.create(
+            group=self.lead_agency,
+            plan=plan,
+            plan_code='basic',
+            starts_at=timezone.now(),
+        )
+
     def test_clone_opportunity_copies_fields_and_adds_requester_as_delegate(self):
         self.client.force_authenticate(user=self.manager)
         response = self.client.post(f'/api/opportunities/{self.opportunity.pk}/clone/')
@@ -376,14 +400,11 @@ class CloningTests(OpportunityTestCase):
         self.opportunity.refresh_from_db()
         self.assertEqual(self.opportunity.title, 'Test Opportunity')
 
-    def test_stakeholder_cloning_becomes_delegate_on_the_copy(self):
+    def test_stakeholder_cannot_clone_without_analyze_entitlement(self):
         self.client.force_authenticate(user=self.stakeholder)
         response = self.client.post(f'/api/opportunities/{self.opportunity.pk}/clone/')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-        cloned_opportunity = Opportunity.objects.get(pk=response.data['id'])
-        self.assertEqual(cloned_opportunity.manager, self.manager)
-        self.assertTrue(cloned_opportunity.delegates.filter(pk=self.stakeholder.pk).exists())
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('active subscription', response.data['detail'])
 
     def test_stranger_cannot_clone_opportunity(self):
         self.client.force_authenticate(user=self.stranger)
