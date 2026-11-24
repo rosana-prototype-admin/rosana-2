@@ -33,6 +33,7 @@ export default function ProjectEditorPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [savedAt, setSavedAt] = useState(null)
   const [projectAccessMessage, setProjectAccessMessage] = useState('')
+  const [siteAccessMessage, setSiteAccessMessage] = useState('')
 
   const [sites, setSites] = useState([])
   const [isLoadingSites, setIsLoadingSites] = useState(false)
@@ -119,6 +120,13 @@ export default function ProjectEditorPage() {
         setProjectAccessMessage('This organization does not have an active subscription for Projects.')
       } else {
         setProjectAccessMessage('')
+      }
+      if (entitlement && entitlement.features?.create_modify_site === false) {
+        setSiteAccessMessage(entitlementDenialMessage(entitlement, 'Sites'))
+      } else if (!entitlement) {
+        setSiteAccessMessage('This organization does not have an active subscription for Sites.')
+      } else {
+        setSiteAccessMessage('')
       }
     }).catch(() => {
       if (!cancelled) setProjectAccessMessage('')
@@ -349,9 +357,15 @@ export default function ProjectEditorPage() {
           </p>
         )}
 
+        {siteAccessMessage && (
+          <p className="form-error" role="alert">
+            {siteAccessMessage}
+          </p>
+        )}
+
         <div className="action-toolbar">
           {canWrite && (
-            <button type="button" onClick={handleNewSite} disabled={isCreatingSite}>
+            <button type="button" onClick={handleNewSite} disabled={isCreatingSite || Boolean(siteAccessMessage)}>
               {isCreatingSite ? 'Creating…' : 'New Site'}
             </button>
           )}

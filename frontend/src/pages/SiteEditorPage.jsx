@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getSite, listAvailableJcodes, updateSite } from '../api/sites'
 import { getProject } from '../api/projects'
 import { getOpportunity } from '../api/opportunities'
+import { getMyEntitlements } from '../api/users'
 import { listCrashConversionTables } from '../api/crashdata'
 import { getCmfConfig } from '../api/cmfs'
 import { listStrategies, updateStrategy } from '../api/strategies'
@@ -16,6 +17,7 @@ import { formatDate } from '../utils/formatDate'
 import { ROAD_CLASS_OPTIONS } from '../utils/roadClasses'
 import { formatAnnualOutcome } from '../utils/annualOutcomeDisplay'
 import { apiErrorMessage } from '../utils/apiError'
+import { entitlementDenialMessage } from '../utils/entitlementMessages'
 import '../styles/editorForm.css'
 import '../styles/formFeedback.css'
 import '../styles/actionToolbar.css'
@@ -273,6 +275,7 @@ export default function SiteEditorPage() {
   const [saveError, setSaveError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [savedAt, setSavedAt] = useState(null)
+  const [siteAccessMessage, setSiteAccessMessage] = useState('')
 
   const [strategies, setStrategies] = useState([])
   const [isLoadingStrategies, setIsLoadingStrategies] = useState(false)
@@ -434,8 +437,28 @@ export default function SiteEditorPage() {
     }
   }, [])
 
-  const canWrite =
+  const hasLegacyWriteAccess =
     opportunity && user && (opportunity.manager === user.id || opportunity.delegates?.includes(user.id))
+  const canWrite = hasLegacyWriteAccess && !siteAccessMessage
+
+  useEffect(() => {
+    if (!hasLegacyWriteAccess || !opportunity) return undefined
+    let cancelled = false
+    getMyEntitlements().then((records) => {
+      if (cancelled) return
+      const entitlement = records.find((record) => String(record.group_id) === String(opportunity.lead_agency))
+      if (entitlement && entitlement.features?.create_modify_site === false) {
+        setSiteAccessMessage(entitlementDenialMessage(entitlement, 'Sites'))
+      } else if (!entitlement) {
+        setSiteAccessMessage('This organization does not have an active subscription for Sites.')
+      } else {
+        setSiteAccessMessage('')
+      }
+    }).catch(() => {
+      if (!cancelled) setSiteAccessMessage('')
+    })
+    return () => { cancelled = true }
+  }, [hasLegacyWriteAccess, opportunity])
 
   const numberOrNull = (value) => (value === '' ? null : Number(value))
 
@@ -469,6 +492,11 @@ export default function SiteEditorPage() {
   async function handleSave(event) {
     event.preventDefault()
     setSaveError('')
+
+    if (siteAccessMessage) {
+      setSaveError(siteAccessMessage)
+      return
+    }
 
     if (!title.trim()) {
       setSaveError('Title is required.')
@@ -533,6 +561,10 @@ export default function SiteEditorPage() {
 
   async function handleUpdateJcode() {
     setJcodeError('')
+    if (siteAccessMessage) {
+      setJcodeError(siteAccessMessage)
+      return
+    }
     setIsUpdatingJcode(true)
     try {
       const updated = await updateSite(id, { jcode_id: selectedJcodeId || null })
@@ -629,6 +661,11 @@ export default function SiteEditorPage() {
         {saveError && (
           <p className="form-error" role="alert">
             {saveError}
+          </p>
+        )}
+        {siteAccessMessage && !saveError && (
+          <p className="form-error" role="alert">
+            {siteAccessMessage}
           </p>
         )}
         {savedAt && !isDirty && !saveError && <p className="form-success text-sm">Saved.</p>}

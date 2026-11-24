@@ -54,21 +54,27 @@ def can_comment(user, opportunity):
     return can_use_feature(user, 'comment', opportunity.lead_agency)
 
 
-def can_write_with_permission(user, opportunity, permission_code):
-    if not can_write(user, opportunity):
-        return False
-    return has_opportunity_permission(user, opportunity, permission_code)
-
-
-def enforce_project_write_access(user, opportunity):
-    """Raise a transparent error when Project analysis/editing is unavailable."""
+def enforce_resource_write_access(user, opportunity, permission_code, resource_label):
+    """Raise a transparent error when a technical resource cannot be changed."""
     lead_agency = opportunity.lead_agency
     if not can_use_feature(user, 'analyze', lead_agency):
         raise PermissionDenied(feature_denial_message(user, 'analyze', lead_agency))
     if not can_write(user, opportunity):
         raise PermissionDenied('You do not have write access to this opportunity.')
-    if not has_opportunity_permission(user, opportunity, 'create_modify_project'):
-        raise PermissionDenied('You do not have permission to create or modify Projects for this Group.')
+    if not has_opportunity_permission(user, opportunity, permission_code):
+        raise PermissionDenied(f'You do not have permission to create or modify {resource_label} for this Group.')
+
+
+def enforce_project_write_access(user, opportunity):
+    return enforce_resource_write_access(
+        user, opportunity, 'create_modify_project', 'Projects'
+    )
+
+
+def enforce_site_write_access(user, opportunity):
+    return enforce_resource_write_access(
+        user, opportunity, 'create_modify_site', 'Sites'
+    )
 
 
 def entitled_opportunity_queryset(queryset, user):
@@ -120,6 +126,8 @@ class OpportunityAccessPermission(BasePermission):
             and request.method in {'PUT', 'PATCH'}
         ):
             enforce_project_write_access(request.user, opportunity)
+        if view.__class__.__name__ == 'SiteViewSet' and request.method in {'PUT', 'PATCH'}:
+            enforce_site_write_access(request.user, opportunity)
         if permission_code and not has_opportunity_permission(request.user, opportunity, permission_code):
             return False
         return can_write(request.user, opportunity)
@@ -161,8 +169,7 @@ class SiteAncestorScopedMixin:
 
     def perform_create(self, serializer):
         project = self.get_ancestor()
-        if not can_write_with_permission(self.request.user, project.opportunity, 'create_modify_site'):
-            raise PermissionDenied('You do not have write access to this opportunity.')
+        enforce_site_write_access(self.request.user, project.opportunity)
         serializer.save(project=project)
 
 

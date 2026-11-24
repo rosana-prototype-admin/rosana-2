@@ -158,6 +158,7 @@ class MyEntitlementsView(APIView):
         'delete_resources',
         'create_opportunity',
         'create_modify_project',
+        'create_modify_site',
     )
 
     def get(self, request):
@@ -172,12 +173,16 @@ class MyEntitlementsView(APIView):
             from groups.permissions import has_group_permission
             can_create_opportunity = can_use_feature(request.user, 'analyze', group)
             can_create_modify_project = can_use_feature(request.user, 'analyze', group)
+            can_create_modify_site = can_use_feature(request.user, 'analyze', group)
             if group.memberships.filter(user=request.user).exists():
                 can_create_opportunity = can_create_opportunity and has_group_permission(
                     request.user, group, 'create_modify_opportunity'
                 )
                 can_create_modify_project = can_create_modify_project and has_group_permission(
                     request.user, group, 'create_modify_project'
+                )
+                can_create_modify_site = can_create_modify_site and has_group_permission(
+                    request.user, group, 'create_modify_site'
                 )
             records.append({
                 'group_id': group.id,
@@ -196,6 +201,7 @@ class MyEntitlementsView(APIView):
             })
             records[-1]['features']['create_opportunity'] = can_create_opportunity
             records[-1]['features']['create_modify_project'] = can_create_modify_project
+            records[-1]['features']['create_modify_site'] = can_create_modify_site
         return Response({'entitlements': records})
 
 

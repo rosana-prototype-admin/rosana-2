@@ -424,11 +424,13 @@ class HierarchyTestCase(OpportunityTestCase):
         # care about focus-area compatibility.
         self.intervention_type = InterventionType.objects.first()
         self.strategy = Strategy.objects.create(site=self.site, intervention_type=self.intervention_type)
+        self.create_project_subscription()
 
     def create_project_subscription(self):
         plan = Plan.objects.create(code='project-test', name='Project test plan')
         PlanFeature.objects.create(plan=plan, feature_code='analyze', enabled=True)
         PlanFeature.objects.create(plan=plan, feature_code='view_existing', enabled=True)
+        PlanFeature.objects.create(plan=plan, feature_code='delete_resources', enabled=True)
         return UserSubscription.objects.create(
             group=self.lead_agency,
             plan=plan,
@@ -436,7 +438,11 @@ class HierarchyTestCase(OpportunityTestCase):
             starts_at=timezone.now(),
         )
 
+    def remove_project_subscription(self):
+        UserSubscription.objects.filter(group=self.lead_agency).delete()
+
     def test_project_creation_without_subscription_is_rejected_transparently(self):
+        self.remove_project_subscription()
         self.client.force_authenticate(user=self.manager)
         response = self.client.post(
             f'/api/opportunities/{self.opportunity.pk}/projects/', {'title': 'New Project', 'comment': ''}
@@ -445,7 +451,6 @@ class HierarchyTestCase(OpportunityTestCase):
         self.assertIn('active subscription', response.data['detail'])
 
     def test_manager_can_create_project_with_analyze_entitlement(self):
-        self.create_project_subscription()
         self.client.force_authenticate(user=self.manager)
         response = self.client.post(
             f'/api/opportunities/{self.opportunity.pk}/projects/', {'title': 'New Project', 'comment': ''}
@@ -454,6 +459,7 @@ class HierarchyTestCase(OpportunityTestCase):
         self.assertEqual(response.data['opportunity'], self.opportunity.pk)
 
     def test_project_modification_without_subscription_is_rejected_transparently(self):
+        self.remove_project_subscription()
         project = Project.objects.create(opportunity=self.opportunity, title='Existing Project')
         self.client.force_authenticate(user=self.manager)
         response = self.client.patch(f'/api/projects/{project.pk}/', {'title': 'Renamed'})
@@ -472,13 +478,29 @@ class HierarchyTestCase(OpportunityTestCase):
         response = self.client.get(f'/api/opportunities/{self.opportunity.pk}/projects/')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test_delegate_can_create_site(self):
-        self.client.force_authenticate(user=self.delegate)
+    def test_site_creation_without_subscription_is_rejected_transparently(self):
+        self.remove_project_subscription()
+        self.client.force_authenticate(user=self.manager)
+        response = self.client.post(
+            f'/api/projects/{self.project.pk}/sites/', {'title': 'New Site', 'comment': ''}
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('active subscription', response.data['detail'])
+
+    def test_manager_can_create_site_with_analyze_entitlement(self):
+        self.client.force_authenticate(user=self.manager)
         response = self.client.post(
             f'/api/projects/{self.project.pk}/sites/', {'title': 'New Site', 'comment': ''}
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['project'], self.project.pk)
+
+    def test_site_modification_without_subscription_is_rejected_transparently(self):
+        self.remove_project_subscription()
+        self.client.force_authenticate(user=self.manager)
+        response = self.client.patch(f'/api/sites/{self.site.pk}/', {'title': 'Renamed'})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('active subscription', response.data['detail'])
 
     def test_stakeholder_can_read_site_but_not_write(self):
         self.client.force_authenticate(user=self.stakeholder)
