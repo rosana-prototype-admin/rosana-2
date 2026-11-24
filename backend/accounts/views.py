@@ -12,7 +12,7 @@ from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, Ou
 from groups.models import Group
 from accounts.audit import record_admin_event
 from .email import send_verification_email
-from .entitlements import can_use_feature, entitlement_context
+from .entitlements import can_use_feature, entitlement_context, is_platform_admin
 from .models import DeactivationSource, User
 from .password_reset import send_password_reset_email
 from .serializers import (
@@ -162,7 +162,7 @@ class MyEntitlementsView(APIView):
     )
 
     def get(self, request):
-        if request.user.is_staff and request.user.is_active:
+        if is_platform_admin(request.user):
             # Platform administrators may audit subscription details for any
             # organization, even when they are not organization members.
             groups = Group.objects.filter(
@@ -202,7 +202,7 @@ class MyEntitlementsView(APIView):
                 'plan_name': subscription.plan.name if subscription and subscription.plan_id else None,
                 'access_state': context.access_state,
                 'has_technical_seat': context.has_technical_seat,
-                'is_platform_admin': bool(request.user.is_staff and request.user.is_active),
+                'is_platform_admin': is_platform_admin(request.user),
                 'features': {
                     code: can_use_feature(request.user, code, group)
                     for code in self.FEATURE_CODES
@@ -246,7 +246,7 @@ class DeactivateAccountView(APIView):
         serializer = DeactivateAccountSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         user = request.user
-        if user.is_staff:
+        if is_platform_admin(user):
             raise serializers.ValidationError('Platform administrator accounts cannot be deactivated here.')
         if Group.objects.filter(admin=user, archived_at__isnull=True).exists():
             raise serializers.ValidationError(

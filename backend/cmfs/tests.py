@@ -28,6 +28,26 @@ class CMFApiTests(APITestCase):
             author=None,
         )
 
+    def test_platform_admin_can_view_restricted_custom_cmf_without_membership(self):
+        platform_admin = User.objects.create_user(
+            username='platform-admin',
+            email='platform-admin@example.com',
+            password='pw',
+            is_staff=True,
+        )
+        cmf = CMF.objects.create(
+            code='restricted-custom',
+            title='Restricted custom',
+            author=self.other_user,
+            permission_scope=CMF.PermissionScope.AGENCY,
+        )
+        cmf.permitted_groups.add(self.agency)
+
+        self.client.force_authenticate(user=platform_admin)
+        response = self.client.get(f'/api/cmfs/{cmf.pk}/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
     def test_authenticated_users_can_list_builtins_and_custom_cmfs(self):
         CMF.objects.create(code='other-custom', title='Other custom', author=self.other_user)
         self.client.force_authenticate(user=self.user)

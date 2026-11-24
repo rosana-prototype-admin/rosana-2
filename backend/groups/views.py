@@ -9,6 +9,7 @@ from rest_framework.response import Response
 
 from notifications.serializers import NotificationSerializer
 from accounts.audit import record_admin_event
+from accounts.entitlements import is_platform_admin
 
 from .models import Group, Membership
 from .permissions import (
@@ -70,7 +71,7 @@ class GroupViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
         include_archived = self.request.query_params.get('include_archived') == 'true'
-        if not include_archived or not (self.request.user.is_staff and self.request.user.is_active):
+        if not include_archived or not is_platform_admin(self.request.user):
             queryset = queryset.filter(archived_at__isnull=True)
         q = self.request.query_params.get('q')
         if q:
@@ -79,7 +80,7 @@ class GroupViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='mine')
     def mine(self, request):
-        if request.user.is_staff and request.user.is_active:
+        if is_platform_admin(request.user):
             queryset = self.get_queryset()
         else:
             queryset = self.get_queryset().filter(
@@ -101,7 +102,7 @@ class GroupViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='restore')
     def restore(self, request, pk=None):
-        if not request.user.is_staff or not request.user.is_active:
+        if not is_platform_admin(request.user):
             return Response({'detail': 'Only platform administrators can restore archived groups.'}, status=403)
         group = get_object_or_404(Group.objects.all(), pk=pk)
         group_ids = group.descendant_group_ids()
@@ -141,7 +142,7 @@ class GroupViewSet(viewsets.ModelViewSet):
         if (
             serializer.validated_data['rosana_role'] != 'commenter'
             and request.user.pk != group.admin_id
-            and not (request.user.is_staff and request.user.is_active)
+            and not is_platform_admin(request.user)
         ):
             raise PermissionDenied('Only the group administrator may assign a Rosana Role during invitation.')
         if any(serializer.validated_data['permissions'].values()) and not has_group_permission(
@@ -210,7 +211,7 @@ class GroupViewSet(viewsets.ModelViewSet):
         if (
             requested_rosana_role != membership.rosana_role
             and request.user.pk != group.admin_id
-            and not (request.user.is_staff and request.user.is_active)
+            and not is_platform_admin(request.user)
         ):
             raise PermissionDenied('Only the group administrator may change organization roles.')
         serializer = MembershipSerializer(membership, data=request.data, partial=True)

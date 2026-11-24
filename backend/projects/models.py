@@ -9,6 +9,10 @@ from focusareas.models import InterventionType
 
 class OpportunityQuerySet(models.QuerySet):
     def visible_to(self, user):
+        from accounts.entitlements import is_platform_admin
+
+        if is_platform_admin(user):
+            return self.all()
         return self.filter(
             Q(manager=user)
             | Q(delegates=user)

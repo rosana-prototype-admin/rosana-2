@@ -179,7 +179,8 @@ def has_group_feature(user, group, feature_code):
 def has_group_permission(user, group, permission_code):
     if user is None or not user.is_authenticated or not user.is_active:
         return False
-    if user.is_staff and user.is_active:
+    from accounts.entitlements import is_platform_admin
+    if is_platform_admin(user):
         return True
     # The group administrator must be able to maintain member roles and
     # permissions even when the current plan has not yet defined a separate
@@ -219,10 +220,11 @@ def user_has_any_group_membership(user):
 def has_any_group_permission(user, permission_code):
     from django.db.models import Q
     from .models import Group
+    from accounts.entitlements import is_platform_admin
 
     if user is None or not user.is_authenticated or not user.is_active:
         return False
-    if user.is_staff:
+    if is_platform_admin(user):
         return True
     groups = Group.objects.filter(Q(admin_id=user.pk) | Q(memberships__user_id=user.pk)).distinct()
     return any(has_group_permission(user, group, permission_code) for group in groups)
@@ -253,7 +255,8 @@ class GroupAccessPermission(BasePermission):
     def has_object_permission(self, request, view, obj):
         if request.method in SAFE_METHODS:
             return True
-        if request.user.is_staff and request.user.is_active:
+        from accounts.entitlements import is_platform_admin
+        if is_platform_admin(request.user):
             return True
         if view.action == 'invite':
             return has_group_permission(request.user, obj, 'add_new_user')

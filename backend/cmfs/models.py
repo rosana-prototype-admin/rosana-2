@@ -78,6 +78,10 @@ class CMF(models.Model):
     def can_be_used_by(self, user):
         if user is None or not user.is_authenticated:
             return False
+        from accounts.entitlements import is_platform_admin
+
+        if is_platform_admin(user):
+            return True
         if self.author_id == user.pk:
             return True
 

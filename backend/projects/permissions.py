@@ -8,12 +8,15 @@ from accounts.entitlements import (
     can_view_existing,
     entitlement_context,
     feature_denial_message,
+    is_platform_admin,
     subscription_for_group,
 )
 from groups.permissions import has_group_permission, has_opportunity_permission, user_has_group_membership
 
 
 def can_read(user, opportunity):
+    if is_platform_admin(user):
+        return True
     legacy_access = (
         opportunity.manager_id == user.pk
         or opportunity.delegates.filter(pk=user.pk).exists()

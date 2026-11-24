@@ -27,6 +27,22 @@ class EntitlementContext:
     access_state: str
 
 
+def is_platform_admin(user):
+    """Return whether ``user`` has active Rosana platform-admin access.
+
+    This is deliberately virtual access: it must not create Membership rows or
+    change a group's administrator.  It is used for platform-wide audit and
+    read access, while normal organization roles continue to come from the
+    group's actual membership records.
+    """
+    return bool(
+        user
+        and user.is_authenticated
+        and user.is_active
+        and user.is_staff
+    )
+
+
 def top_level_group(group):
     """Return the billing organization at the top of a group tree."""
     while group is not None and group.parent_id is not None:
@@ -173,7 +189,7 @@ def can_use_feature(user, feature_code, group=None):
     context = entitlement_context(user, group)
     if context.access_state != AccessState.ACTIVE:
         return False
-    if user.is_staff:
+    if is_platform_admin(user):
         return True
 
     role = context.rosana_role
@@ -230,7 +246,7 @@ def can_view_existing(user, group=None):
     context = entitlement_context(user, group)
     if context.subscription is None:
         return True
-    if user.is_staff:
+    if is_platform_admin(user):
         return True
     if context.rosana_role not in {
         RosanaRole.FINANCIAL_ADMIN,
@@ -249,7 +265,7 @@ def can_view_existing(user, group=None):
 def can_view_billing(user, group=None):
     """Whether the user may view organization subscription information."""
     context = entitlement_context(user, group)
-    if user is not None and user.is_staff and user.is_active:
+    if is_platform_admin(user):
         return True
     return context.rosana_role in {
         RosanaRole.FINANCIAL_ADMIN,
@@ -260,7 +276,7 @@ def can_view_billing(user, group=None):
 def can_change_billing(user, group=None):
     """Whether the user may change subscription records without payment access."""
     context = entitlement_context(user, group)
-    if user is not None and user.is_staff and user.is_active:
+    if is_platform_admin(user):
         return True
     if context.rosana_role != RosanaRole.FINANCIAL_ADMIN:
         return False
@@ -270,7 +286,7 @@ def can_change_billing(user, group=None):
 def can_manage_seats(user, group=None):
     """Whether the user may assign or release technical seats."""
     context = entitlement_context(user, group)
-    if user is not None and user.is_staff and user.is_active:
+    if is_platform_admin(user):
         return True
     return (
         context.rosana_role == RosanaRole.TECHNICAL_ADMIN

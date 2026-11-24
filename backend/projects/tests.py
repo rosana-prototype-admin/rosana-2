@@ -35,6 +35,22 @@ class OpportunityTestCase(APITestCase):
 
 
 class OpportunityPermissionTests(OpportunityTestCase):
+    def test_platform_admin_can_view_unrelated_opportunity_without_membership(self):
+        platform_admin = User.objects.create_user(
+            username='platform-admin',
+            email='platform-admin@example.com',
+            password='pw',
+            is_staff=True,
+        )
+        self.client.force_authenticate(user=platform_admin)
+
+        list_response = self.client.get('/api/opportunities/')
+        detail_response = self.client.get(f'/api/opportunities/{self.opportunity.pk}/')
+
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(list_response.data), 1)
+        self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
+
     def test_opportunity_list_includes_managing_agency_and_manager_names(self):
         self.client.force_authenticate(user=self.manager)
         response = self.client.get('/api/opportunities/')

@@ -81,9 +81,18 @@ export default function SplashPage() {
   }
 
   const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ')
-  const accessWarnings = entitlements.flatMap((entitlement) => {
+  // Platform admins receive organization-wide entitlement records so they can
+  // audit subscriptions. Those records are not the platform admin's own
+  // access contexts and should not generate personal account warnings.
+  const personalEntitlements = entitlements.filter((entitlement) => (
+    !entitlement.is_platform_admin || entitlement.rosana_role
+  ))
+  const accessWarnings = personalEntitlements.flatMap((entitlement) => {
     const label = entitlement.group_name || 'Your organization'
-    if (!entitlement.plan_code || entitlement.access_state === 'unlicensed') {
+    const hasPlan = Boolean(
+      entitlement.plan_name || (entitlement.plan_code && entitlement.plan_code !== 'none')
+    )
+    if (!hasPlan || entitlement.access_state === 'unlicensed') {
       return [`${label} does not have an active subscription plan.`]
     }
     if (entitlement.access_state !== 'active') {
@@ -117,7 +126,7 @@ export default function SplashPage() {
           </section>
         )}
 
-        {!isLoadingEntitlements && entitlements.map((entitlement) => (
+        {!isLoadingEntitlements && personalEntitlements.map((entitlement) => (
           <AccessStatusCard key={entitlement.group_id} entitlement={entitlement} />
         ))}
 

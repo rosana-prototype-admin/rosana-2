@@ -1,5 +1,7 @@
 from rest_framework.permissions import BasePermission
 
+from .entitlements import is_platform_admin
+
 
 class IsPlatformAdmin(BasePermission):
     """Allow only active users who are explicitly marked as platform staff."""
@@ -7,5 +9,4 @@ class IsPlatformAdmin(BasePermission):
     message = 'Platform administrator access is required.'
 
     def has_permission(self, request, view):
-        user = request.user
-        return bool(user and user.is_authenticated and user.is_active and user.is_staff)
+        return is_platform_admin(request.user)
