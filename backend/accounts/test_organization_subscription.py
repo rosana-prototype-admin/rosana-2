@@ -63,6 +63,33 @@ class OrganizationSubscriptionWorkflowTests(APITestCase):
             self.assertEqual(response.data['subscription']['plan_code'], self.plan.code)
             self.assertEqual(response.data['payment_processing'], 'not_configured')
 
+    def test_platform_superuser_can_view_any_organization_subscription(self):
+        platform_admin = User.objects.create_superuser(
+            username='platform-admin',
+            email='platform-admin@example.com',
+            password='pw',
+        )
+        other_organization = Group.objects.create(
+            name='Other Organization',
+            admin=self.commenter,
+        )
+        other_subscription = UserSubscription.objects.create(
+            group=other_organization,
+            plan=self.plan,
+            plan_code=self.plan.code,
+            starts_at=timezone.now(),
+            seat_limit=5,
+        )
+
+        self.client.force_authenticate(user=platform_admin)
+        response = self.client.get(
+            reverse('organization-subscription', args=[other_organization.pk])
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['subscription']['id'], other_subscription.pk)
+        self.assertTrue(response.data['can_view_billing'])
+
     def test_commenter_can_view_basic_subscription_summary(self):
         self.client.force_authenticate(user=self.commenter)
         response = self.client.get(self.url())

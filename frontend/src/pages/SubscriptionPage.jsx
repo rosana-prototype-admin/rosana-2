@@ -29,7 +29,7 @@ function isoValue(value) {
 }
 
 function label(value) {
-  return value.replaceAll('_', ' ')
+  return (value || 'platform admin').replaceAll('_', ' ')
 }
 
 export default function SubscriptionPage() {
@@ -59,6 +59,7 @@ export default function SubscriptionPage() {
       const accessible = Array.from(
         (data.entitlements || [])
           .filter((item) => (
+            item.is_platform_admin ||
             item.rosana_role === 'financial_admin' || item.rosana_role === 'technical_admin'
           ))
           .reduce((organizationsById, item) => {

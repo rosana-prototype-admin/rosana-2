@@ -162,10 +162,18 @@ class MyEntitlementsView(APIView):
     )
 
     def get(self, request):
-        groups = Group.objects.filter(
-            Q(admin=request.user) | Q(memberships__user=request.user),
-            archived_at__isnull=True,
-        ).select_related('parent').distinct()
+        if request.user.is_staff and request.user.is_active:
+            # Platform administrators may audit subscription details for any
+            # organization, even when they are not organization members.
+            groups = Group.objects.filter(
+                parent__isnull=True,
+                archived_at__isnull=True,
+            ).select_related('parent')
+        else:
+            groups = Group.objects.filter(
+                Q(admin=request.user) | Q(memberships__user=request.user),
+                archived_at__isnull=True,
+            ).select_related('parent').distinct()
         records = []
         for group in groups:
             context = entitlement_context(request.user, group)
@@ -194,6 +202,7 @@ class MyEntitlementsView(APIView):
                 'plan_name': subscription.plan.name if subscription and subscription.plan_id else None,
                 'access_state': context.access_state,
                 'has_technical_seat': context.has_technical_seat,
+                'is_platform_admin': bool(request.user.is_staff and request.user.is_active),
                 'features': {
                     code: can_use_feature(request.user, code, group)
                     for code in self.FEATURE_CODES
